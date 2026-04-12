@@ -1,0 +1,1193 @@
+[
+{
+  "model": "base.product",
+  "pk": 1,
+  "fields": {
+    "product_name": "Bib Cock",
+    "price": 41.5,
+    "size": "",
+    "product_color": null,
+    "product_description": "Durable UPVC wall tap for cold water supply.",
+    "current_stock": 150,
+    "capacity": "",
+    "warranty": "1 year",
+    "max_head": 0,
+    "unit": 1,
+    "material": 3,
+    "category": 1,
+    "sub_category": 1,
+    "brand": 6,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 3,
+  "fields": {
+    "product_name": "Nozzal Cock",
+    "price": 43.5,
+    "size": "",
+    "product_color": null,
+    "product_description": "UPVC tap with nozzle for hose pipe connection.",
+    "current_stock": 250,
+    "capacity": "",
+    "warranty": "1 year",
+    "max_head": 0,
+    "unit": 1,
+    "material": 3,
+    "category": 1,
+    "sub_category": 1,
+    "brand": 6,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 4,
+  "fields": {
+    "product_name": "Piller Cock",
+    "price": 52.5,
+    "size": "",
+    "product_color": "White",
+    "product_description": "Washbasin mounted vertical tap.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 1,
+    "sub_category": 1,
+    "brand": 6,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 5,
+  "fields": {
+    "product_name": "Head Shower",
+    "price": 150.0,
+    "size": "4*4",
+    "product_color": "Silver",
+    "product_description": "Square rain shower head with chrome finish.",
+    "current_stock": 199,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 2,
+    "category": 1,
+    "sub_category": 2,
+    "brand": 9,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 6,
+  "fields": {
+    "product_name": "Grohe HF 01",
+    "price": 240.0,
+    "size": "",
+    "product_color": "Silver",
+    "product_description": "Premium health faucet with trigger control.",
+    "current_stock": 0,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 2,
+    "category": 1,
+    "sub_category": 3,
+    "brand": 9,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 7,
+  "fields": {
+    "product_name": "I20 HF 14",
+    "price": 240.0,
+    "size": "",
+    "product_color": "Silver",
+    "product_description": "High-quality health faucet / jet spray.",
+    "current_stock": 199,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 2,
+    "category": 1,
+    "sub_category": 3,
+    "brand": 9,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 8,
+  "fields": {
+    "product_name": "Concelo Cistern",
+    "price": 3650.0,
+    "size": "",
+    "product_color": "white",
+    "product_description": "Single flush concealed cistern.",
+    "current_stock": 197,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 2,
+    "sub_category": 5,
+    "brand": 4,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 9,
+  "fields": {
+    "product_name": "Concelo Cistern",
+    "price": 5500.0,
+    "size": "",
+    "product_color": "Silver",
+    "product_description": "Dual flush concealed cistern.",
+    "current_stock": 196,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 2,
+    "sub_category": 5,
+    "brand": 4,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 10,
+  "fields": {
+    "product_name": "Concealed Cistern",
+    "price": 7500.0,
+    "size": "",
+    "product_color": "white",
+    "product_description": "Premium wall-mounted flushing system.",
+    "current_stock": 196,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 2,
+    "sub_category": 5,
+    "brand": 4,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 11,
+  "fields": {
+    "product_name": "Pipe 4.5 KGS",
+    "price": 241.0,
+    "size": "2 inches",
+    "product_color": "white",
+    "product_description": "Heavy-duty UPVC plumbing pipe.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 10,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 12,
+  "fields": {
+    "product_name": "Pipe 4.5 KGS",
+    "price": 495.0,
+    "size": "3 inches",
+    "product_color": "white",
+    "product_description": "Heavy-duty UPVC plumbing pipe.",
+    "current_stock": 199,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 10,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 13,
+  "fields": {
+    "product_name": "Pipe 4.5 KGS",
+    "price": 720.0,
+    "size": "4 inches",
+    "product_color": "white",
+    "product_description": "Heavy-duty UPVC plumbing pipe.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 10,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 14,
+  "fields": {
+    "product_name": "Pipe 4.5 KGS",
+    "price": 1295.0,
+    "size": "6 inches",
+    "product_color": "white",
+    "product_description": "Heavy-duty UPVC plumbing pipe.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 10,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 15,
+  "fields": {
+    "product_name": "Pipe Type A",
+    "price": 339.0,
+    "size": "2 inches",
+    "product_color": "white",
+    "product_description": "Standard Type A drainage pipe.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 10,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 16,
+  "fields": {
+    "product_name": "Pipe Type A",
+    "price": 657.0,
+    "size": "3 inches",
+    "product_color": "white",
+    "product_description": "Standard Type A drainage pipe.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 10,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 17,
+  "fields": {
+    "product_name": "Pipe Type A",
+    "price": 861.0,
+    "size": "4 inches",
+    "product_color": "white",
+    "product_description": "Standard Type A drainage pipe.",
+    "current_stock": 199,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 10,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 18,
+  "fields": {
+    "product_name": "Pipe Type A",
+    "price": 1925.0,
+    "size": "6 inches",
+    "product_color": "white",
+    "product_description": "Standard Type A drainage pipe.",
+    "current_stock": 199,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 10,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 19,
+  "fields": {
+    "product_name": "Elbow Prestige",
+    "price": 14.92,
+    "size": "2 inches",
+    "product_color": "white",
+    "product_description": "UPVC Pipe Fitting - Elbow.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 12,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 20,
+  "fields": {
+    "product_name": "Elbow Prestige",
+    "price": 28.1,
+    "size": "3 inches",
+    "product_color": "white",
+    "product_description": "UPVC Pipe Fitting - Elbow.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 12,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 21,
+  "fields": {
+    "product_name": "Elbow Prestige",
+    "price": 45.65,
+    "size": "4 inches",
+    "product_color": "white",
+    "product_description": "UPVC Pipe Fitting - Elbow.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 12,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 22,
+  "fields": {
+    "product_name": "Elbow Prestige",
+    "price": 140.48,
+    "size": "6 inches",
+    "product_color": "white",
+    "product_description": "UPVC Pipe Fitting - Elbow.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 12,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 23,
+  "fields": {
+    "product_name": "Tee Prestige",
+    "price": 18.9,
+    "size": "2 inches",
+    "product_color": "white",
+    "product_description": "UPVC Pipe Fitting - Tee.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 13,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 24,
+  "fields": {
+    "product_name": "Tee Prestige",
+    "price": 34.68,
+    "size": "3 inches",
+    "product_color": "white",
+    "product_description": "UPVC Pipe Fitting - Tee.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 13,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 25,
+  "fields": {
+    "product_name": "Tee Prestige",
+    "price": 58.82,
+    "size": "4 inches",
+    "product_color": "white",
+    "product_description": "UPVC Pipe Fitting - Tee.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 13,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 26,
+  "fields": {
+    "product_name": "Tee Prestige",
+    "price": 208.96,
+    "size": "6 inches",
+    "product_color": "white",
+    "product_description": "UPVC Pipe Fitting - Tee.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 3,
+    "sub_category": 13,
+    "brand": 1,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 27,
+  "fields": {
+    "product_name": "Mseal PhataPhat",
+    "price": 10.0,
+    "size": "25 Gms",
+    "product_color": "white",
+    "product_description": "Fast-setting multi-purpose epoxy putty.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 7,
+    "category": 3,
+    "sub_category": 17,
+    "brand": 7,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 28,
+  "fields": {
+    "product_name": "Mseal PhataPhat Jar Pack",
+    "price": 20.0,
+    "size": "60 Gms",
+    "product_color": "white",
+    "product_description": "Epoxy putty in bulk jar packaging.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 6,
+    "material": 7,
+    "category": 3,
+    "sub_category": 17,
+    "brand": 7,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 29,
+  "fields": {
+    "product_name": "Mseal PV Seal Sol Cem",
+    "price": 40.0,
+    "size": "20 ML",
+    "product_color": "Yellow",
+    "product_description": "Solvent cement for joining CPVC pipes.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 6,
+    "material": 4,
+    "category": 3,
+    "sub_category": 18,
+    "brand": 7,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 30,
+  "fields": {
+    "product_name": "Mseal PV Seal Sol Cem Tube",
+    "price": 85.0,
+    "size": "50 ML",
+    "product_color": "white",
+    "product_description": "CPVC solvent cement in squeeze tube.",
+    "current_stock": 200,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 7,
+    "material": 4,
+    "category": 3,
+    "sub_category": 18,
+    "brand": 7,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 31,
+  "fields": {
+    "product_name": "Revo Self Priming Pump H Plus",
+    "price": 2570.0,
+    "size": "",
+    "product_color": "Blue",
+    "product_description": "Self-priming water pump for domestic use.",
+    "current_stock": 200,
+    "capacity": "0.5 HP",
+    "warranty": "12 months",
+    "max_head": 80,
+    "unit": 1,
+    "material": 8,
+    "category": 5,
+    "sub_category": 19,
+    "brand": 8,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 32,
+  "fields": {
+    "product_name": "Revo Self Priming Pump F Plus",
+    "price": 3540.0,
+    "size": "",
+    "product_color": "Blue",
+    "product_description": "Self-priming water pump for domestic use.",
+    "current_stock": 200,
+    "capacity": "1.0 HP",
+    "warranty": "12 months",
+    "max_head": 120,
+    "unit": 1,
+    "material": 8,
+    "category": 5,
+    "sub_category": 19,
+    "brand": 8,
+    "is_active": true
+  }
+},
+{
+  "model": "base.product",
+  "pk": 33,
+  "fields": {
+    "product_name": "Long Nose",
+    "price": 52.5,
+    "size": "",
+    "product_color": "White",
+    "product_description": "Extended body bib cock for extra reach.",
+    "current_stock": 150,
+    "capacity": "",
+    "warranty": "",
+    "max_head": 0,
+    "unit": 1,
+    "material": 9,
+    "category": 1,
+    "sub_category": 1,
+    "brand": 6,
+    "is_active": true
+  }
+},
+{
+  "model": "base.productbrand",
+  "pk": 1,
+  "fields": {
+    "brand": "Prince"
+  }
+},
+{
+  "model": "base.productbrand",
+  "pk": 2,
+  "fields": {
+    "brand": "Crompton"
+  }
+},
+{
+  "model": "base.productbrand",
+  "pk": 3,
+  "fields": {
+    "brand": "Nikolas"
+  }
+},
+{
+  "model": "base.productbrand",
+  "pk": 4,
+  "fields": {
+    "brand": "Siamp"
+  }
+},
+{
+  "model": "base.productbrand",
+  "pk": 6,
+  "fields": {
+    "brand": "Mosco"
+  }
+},
+{
+  "model": "base.productbrand",
+  "pk": 7,
+  "fields": {
+    "brand": "Pidilite"
+  }
+},
+{
+  "model": "base.productbrand",
+  "pk": 8,
+  "fields": {
+    "brand": "V-Guard"
+  }
+},
+{
+  "model": "base.productbrand",
+  "pk": 9,
+  "fields": {
+    "brand": "Jiva"
+  }
+},
+{
+  "model": "base.productcategory",
+  "pk": 1,
+  "fields": {
+    "category": "CP Fittings"
+  }
+},
+{
+  "model": "base.productcategory",
+  "pk": 2,
+  "fields": {
+    "category": "Sanitary Fittings"
+  }
+},
+{
+  "model": "base.productcategory",
+  "pk": 3,
+  "fields": {
+    "category": "Plumbing Items"
+  }
+},
+{
+  "model": "base.productcategory",
+  "pk": 5,
+  "fields": {
+    "category": "Plumbing Hardwares and Machinery"
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 1,
+  "fields": {
+    "sub_category": "Taps",
+    "category": 1
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 2,
+  "fields": {
+    "sub_category": "Showers",
+    "category": 1
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 3,
+  "fields": {
+    "sub_category": "Health Faucets",
+    "category": 1
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 4,
+  "fields": {
+    "sub_category": "Mixers",
+    "category": 1
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 5,
+  "fields": {
+    "sub_category": "Cisterns",
+    "category": 2
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 6,
+  "fields": {
+    "sub_category": "Sinks",
+    "category": 2
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 7,
+  "fields": {
+    "sub_category": "Washbasins",
+    "category": 2
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 8,
+  "fields": {
+    "sub_category": "Toilet Set",
+    "category": 2
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 9,
+  "fields": {
+    "sub_category": "Toilet Seat",
+    "category": 2
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 10,
+  "fields": {
+    "sub_category": "Pipes",
+    "category": 3
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 11,
+  "fields": {
+    "sub_category": "Tanks",
+    "category": 3
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 12,
+  "fields": {
+    "sub_category": "Elbows",
+    "category": 3
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 13,
+  "fields": {
+    "sub_category": "Tee",
+    "category": 3
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 14,
+  "fields": {
+    "sub_category": "Union",
+    "category": 3
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 15,
+  "fields": {
+    "sub_category": "Socket",
+    "category": 3
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 16,
+  "fields": {
+    "sub_category": "Coupler",
+    "category": 3
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 17,
+  "fields": {
+    "sub_category": "M-Seal",
+    "category": 3
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 18,
+  "fields": {
+    "sub_category": "Solvent",
+    "category": 3
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 19,
+  "fields": {
+    "sub_category": "Pumps",
+    "category": 5
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 20,
+  "fields": {
+    "sub_category": "Jalis",
+    "category": 5
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 21,
+  "fields": {
+    "sub_category": "Main Holes",
+    "category": 5
+  }
+},
+{
+  "model": "base.productsubcategory",
+  "pk": 22,
+  "fields": {
+    "sub_category": "Brackets",
+    "category": 5
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 14,
+  "fields": {
+    "brand": 1,
+    "sub_category": 10
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 15,
+  "fields": {
+    "brand": 1,
+    "sub_category": 11
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 16,
+  "fields": {
+    "brand": 1,
+    "sub_category": 12
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 17,
+  "fields": {
+    "brand": 1,
+    "sub_category": 13
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 18,
+  "fields": {
+    "brand": 1,
+    "sub_category": 14
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 19,
+  "fields": {
+    "brand": 1,
+    "sub_category": 15
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 20,
+  "fields": {
+    "brand": 1,
+    "sub_category": 16
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 21,
+  "fields": {
+    "brand": 4,
+    "sub_category": 5
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 25,
+  "fields": {
+    "brand": 7,
+    "sub_category": 17
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 26,
+  "fields": {
+    "brand": 7,
+    "sub_category": 18
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 27,
+  "fields": {
+    "brand": 8,
+    "sub_category": 19
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 32,
+  "fields": {
+    "brand": 6,
+    "sub_category": 1
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 43,
+  "fields": {
+    "brand": 9,
+    "sub_category": 2
+  }
+},
+{
+  "model": "base.brandsubcategorymap",
+  "pk": 44,
+  "fields": {
+    "brand": 9,
+    "sub_category": 3
+  }
+},
+{
+  "model": "base.customertype",
+  "pk": 1,
+  "fields": {
+    "type_name": "Retailer"
+  }
+},
+{
+  "model": "base.customertype",
+  "pk": 2,
+  "fields": {
+    "type_name": "Plumber"
+  }
+},
+{
+  "model": "base.customertype",
+  "pk": 3,
+  "fields": {
+    "type_name": "Builder"
+  }
+},
+{
+  "model": "base.customertype",
+  "pk": 4,
+  "fields": {
+    "type_name": "Dealer"
+  }
+},
+{
+  "model": "base.customertype",
+  "pk": 5,
+  "fields": {
+    "type_name": "Employee"
+  }
+},
+{
+  "model": "base.productmaterial",
+  "pk": 1,
+  "fields": {
+    "name": "Brass"
+  }
+},
+{
+  "model": "base.productmaterial",
+  "pk": 2,
+  "fields": {
+    "name": "Stainless Steel"
+  }
+},
+{
+  "model": "base.productmaterial",
+  "pk": 3,
+  "fields": {
+    "name": "PVC"
+  }
+},
+{
+  "model": "base.productmaterial",
+  "pk": 4,
+  "fields": {
+    "name": "CPVC"
+  }
+},
+{
+  "model": "base.productmaterial",
+  "pk": 5,
+  "fields": {
+    "name": "Copper"
+  }
+},
+{
+  "model": "base.productmaterial",
+  "pk": 6,
+  "fields": {
+    "name": "Plastic"
+  }
+},
+{
+  "model": "base.productmaterial",
+  "pk": 7,
+  "fields": {
+    "name": "Epoxy"
+  }
+},
+{
+  "model": "base.productmaterial",
+  "pk": 8,
+  "fields": {
+    "name": "Cast Iron"
+  }
+},
+{
+  "model": "base.productmaterial",
+  "pk": 9,
+  "fields": {
+    "name": "UPVC"
+  }
+},
+{
+  "model": "base.productunit",
+  "pk": 1,
+  "fields": {
+    "name": "pcs"
+  }
+},
+{
+  "model": "base.productunit",
+  "pk": 2,
+  "fields": {
+    "name": "box"
+  }
+},
+{
+  "model": "base.productunit",
+  "pk": 3,
+  "fields": {
+    "name": "set"
+  }
+},
+{
+  "model": "base.productunit",
+  "pk": 4,
+  "fields": {
+    "name": "kg"
+  }
+},
+{
+  "model": "base.productunit",
+  "pk": 5,
+  "fields": {
+    "name": "litre"
+  }
+},
+{
+  "model": "base.productunit",
+  "pk": 6,
+  "fields": {
+    "name": "Jars"
+  }
+},
+{
+  "model": "base.productunit",
+  "pk": 7,
+  "fields": {
+    "name": "Tubes"
+  }
+}
+]

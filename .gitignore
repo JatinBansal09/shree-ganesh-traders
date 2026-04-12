@@ -1,0 +1,15 @@
+# Environments
+shree_ganesh_env_new/  <-- UPDATED
+.venv/
+venv/
+env/
+
+# Node / React
+my-app/node_modules/   <-- UPDATED (since node_modules is inside my-app)
+node_modules/
+dist/
+
+# Python
+**/__pycache__/
+*.pyc
+backend/db.sqlite3
