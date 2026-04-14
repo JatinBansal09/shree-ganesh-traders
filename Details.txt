@@ -1,0 +1,29 @@
+1) Owner:
+
+	Username: Owner
+	Password: Owner123@###
+
+2) Admin:
+
+	Username: Admin
+	Password: Admin123@###
+
+3) Emp:
+
+	Username: Employee
+	Password: 2tlo%EdHF1
+
+4) Retailer:
+
+	Username: User01
+	Password: pew5PPgn$T
+
+5) Plumber:
+
+	Username: User03
+	Password: User3Plumber@
+
+6) Builder:
+
+	Username: User04
+	Password: User4Builder@

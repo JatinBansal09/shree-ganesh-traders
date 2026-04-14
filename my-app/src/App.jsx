@@ -7,7 +7,7 @@ import Users from './Users'
 import RequireAuth from './RequireAuth'
 import Dashboard from './Dashboard';
 import Consumers from "./Final_Consumers";
-import DiscountGroupSettingsPage from "./DiscountGroupSettingsPage";
+import DiscountGroupSettingsPage from "./Discountgroupsettingspage";
 import Masters_data from "./Masters_page";
 import Layout from "./Layout";
 import Home from "./Home";

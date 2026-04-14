@@ -6,8 +6,8 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load .env file from my-app directory (parent of backend)
-ENV_PATH = BASE_DIR.parent / '.env'
+# Load .env file from root directory (two levels up from backend)
+ENV_PATH = BASE_DIR.parent.parent / '.env'
 load_dotenv(ENV_PATH)
 
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
@@ -113,33 +113,33 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend.wsgi.application'
 
 # ==================== DATABASE ====================
-# DATABASES = {
-#     'default': {
-#         'ENGINE': os.environ.get('DB_ENGINE', 'django.db.backends.mysql'),
-#         'HOST': os.environ.get('DB_HOST', 'localhost'), 
-#         'NAME': os.environ.get('DB_NAME', 'shreeganesh'),
-#         'USER': os.environ.get('DB_USER', 'root'),
-#         'PASSWORD': os.environ.get('DB_PASSWORD', 'Admin123@###'),
-#         'PORT': os.environ.get('DB_PORT', '3306'),
-#         'OPTIONS': {
-#             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-#         }
-#     }
-# }
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'HOST': 'localhost',
-        'USER': 'root',
-        'PASSWORD': 'Admin123@###',
-        'NAME': 'shreeganesh',
-        'PORT': '3306',
+        'ENGINE': os.environ.get('DB_ENGINE', 'django.db.backends.mysql'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'), 
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'PORT': os.environ.get('DB_PORT', '3306'),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         }
     }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'HOST': 'localhost',
+#         'USER': 'root',
+#         'PASSWORD': 'Admin123@###',
+#         'NAME': 'shreeganesh',
+#         'PORT': '3306',
+#         'OPTIONS': {
+#             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+#         }
+#     }
+# }
 
 # ==================== PASSWORD VALIDATION ====================
 AUTH_PASSWORD_VALIDATORS = [
@@ -165,32 +165,33 @@ USE_TZ = True
 
 # ==================== CORS & CSRF SETTINGS ====================
 # CORS Configuration
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
 # CORS_ALLOWED_ORIGINS = [
 #     "http://localhost:5173",
 #     "http://127.0.0.1:5173",
-#     "http://localhost",        # ✅ Docker nginx
-#     "http://localhost:80",     # ✅ Docker nginx explicit port
 # ]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost",        # ✅ Docker nginx
+    "http://localhost:80",     # ✅ Docker nginx explicit port
+    
+]
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 
 # CSRF Configuration
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
 # CSRF_TRUSTED_ORIGINS = [
 #     "http://localhost:5173",
 #     "http://127.0.0.1:5173",
-#     "http://localhost",        # ✅ Docker nginx
-#     "http://localhost:80",
 # ]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost",        # ✅ Docker nginx
+    "http://localhost:80",
+]
 
 CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_COOKIE_HTTPONLY = False  # Frontend needs to read this

@@ -1,0 +1,77 @@
+version: "3.9"
+
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: shree_ganesh_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - sgnet
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: shree_ganesh_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - sgnet
+
+  backend:
+    build:
+      context: ./my-app/backend
+      dockerfile: Dockerfile
+    container_name: shree_ganesh_backend
+    restart: always
+    env_file:
+      - ./my-app/backend/.env
+    environment:
+      - DB_HOST=db          # ✅ override to use service name
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - static_files:/app/staticfiles
+    networks:
+      - sgnet
+
+  frontend:
+    build:
+      context: ./my-app
+      dockerfile: Dockerfile
+    container_name: shree_ganesh_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - sgnet
+
+volumes:
+  mysql_data:
+  static_files:
+
+networks:
+  sgnet:
+    driver: bridge
