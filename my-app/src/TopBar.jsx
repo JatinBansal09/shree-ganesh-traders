@@ -1,9 +1,15 @@
 import { Search, ShoppingCart, Phone } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-import { toggleCart, selectCartCount } from "./store/cartSlice";
+import { toggleCart, selectCartCount } from "./store/Cartslice";
 import { useTranslation } from "./i18n";
 
-const TopBar = ({ showSearch, searchQuery, setSearchQuery, onSearchEnter, onSearchClear }) => {
+const TopBar = ({
+  showSearch,
+  searchQuery,
+  setSearchQuery,
+  onSearchEnter,
+  onSearchClear,
+}) => {
   const dispatch = useDispatch();
   const cartCount = useSelector(selectCartCount);
   const { t } = useTranslation();
@@ -16,7 +22,9 @@ const TopBar = ({ showSearch, searchQuery, setSearchQuery, onSearchEnter, onSear
           <span className="flex items-center gap-1">
             <Phone size={16} className="text-white" /> +91 98765 43210
           </span>
-          <span className="flex items-center gap-1">✉ info@shreeganeshtradingco.com</span>
+          <span className="flex items-center gap-1">
+            ✉ info@shreeganeshtradingco.com
+          </span>
         </div>
         <div>{t("weekly_offer")}</div>
       </div>
@@ -24,16 +32,19 @@ const TopBar = ({ showSearch, searchQuery, setSearchQuery, onSearchEnter, onSear
       {/* Main bar */}
       <div className="h-23 px-6 flex items-center justify-between">
         {/* Logo & Branding */}
-        <div className="flex items-center gap-1"> {/* 👈 Reduced from 3 to 1 */}
+        <div className="flex items-center gap-1">
+          {" "}
+          {/* 👈 Reduced from 3 to 1 */}
           {/* Logo Image */}
-          <img 
-            src="/images/Shree_Ganesh_Traders_logo.png" 
-            alt="Logo" 
-            className="h-12 w-auto object-contain m-0 p-0"  /* 👈 Added m-0 p-0 to be safe */
+          <img
+            src="/images/Shree_Ganesh_Traders_logo.png"
+            alt="Logo"
+            className="h-12 w-auto object-contain m-0 p-0" /* 👈 Added m-0 p-0 to be safe */
           />
-          
           {/* Text Branding */}
-          <div className="flex flex-col justify-center leading-tight ml-[-4px]"> {/* 👈 Negative margin if needed */}
+          <div className="flex flex-col justify-center leading-tight ml-[-4px]">
+            {" "}
+            {/* 👈 Negative margin if needed */}
             <span className="text-xl font-bold text-[#1a1a2e] tracking-tight uppercase">
               Shree Ganesh Trading Co.
             </span>
@@ -42,9 +53,11 @@ const TopBar = ({ showSearch, searchQuery, setSearchQuery, onSearchEnter, onSear
             </span>
           </div>
         </div>
-                {/* Search — ONLY when needed */}
+        {/* Search — ONLY when needed */}
         {showSearch && (
-          <div className="flex-1 flex justify-start ml-12"> {/* 👈 ml-12 controls the gap */}
+          <div className="flex-1 flex justify-start ml-12">
+            {" "}
+            {/* 👈 ml-12 controls the gap */}
             <div className="relative w-[70%] max-w-md">
               <Search
                 size={16}
@@ -55,7 +68,7 @@ const TopBar = ({ showSearch, searchQuery, setSearchQuery, onSearchEnter, onSear
                 placeholder={t("search_placeholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && onSearchEnter?.()}
+                onKeyDown={(e) => e.key === "Enter" && onSearchEnter?.()}
                 className="w-full pl-9 pr-4 py-1.5 text-[13px] rounded-lg bg-gray-100 focus:outline-none"
               />
               {searchQuery && (

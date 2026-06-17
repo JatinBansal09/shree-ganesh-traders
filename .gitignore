@@ -1,25 +1,36 @@
-# Environment variables
-.env
+# Environment variables — keep .env but exclude local overrides
 .env.local
 .env.*.local
 
 # Python
 __pycache__/
 *.pyc
+*.pyo
 *.egg-info/
 venv/
 env/
+shree_ganesh_env/
 shree_ganesh_env_new/
 
 # Database
 db.sqlite3
 *.db
+my-app/backend/db.sqlite3
 
 # Node modules
 node_modules/
 dist/
 
+# Django generated
+my-app/backend/staticfiles/
+my-app/backend/logs/
+my-app/backend/media/
+
 # IDE
 .vscode/
 .idea/
 *.swp
+
+# OS
+.DS_Store
+Thumbs.db

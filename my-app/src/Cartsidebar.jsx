@@ -10,12 +10,12 @@ import {
   decrementQuantity,
   clearCart,
   closeCart,
-} from "./store/cartSlice";
+} from "./store/Cartslice";
 import { X, User } from "lucide-react";
 import { getUserInfo } from "./auth_utils"; // 2. Import your utility
 import SelectCustomerModal from "./SelectCustomerModal";
 import apiFetch from "./utils/apiClient";
-import { toastAlert } from './alerts';
+import { toastAlert } from "./alerts";
 
 const CartSidebar = () => {
   const dispatch = useDispatch();
@@ -32,87 +32,87 @@ const CartSidebar = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       const data = await getUserInfo(); // This calls your API
-      
+
       // Check if data exists and isn't a rate-limit flag
       if (data && !data.isRateLimited) {
         // Map the backend keys to your state
         setRole(data.user_role);
-        if (data.user_role==='Employee'){
+        if (data.user_role === "Employee") {
           setEmpId(data.user_id);
         }
       } else if (data?.isRateLimited) {
         console.warn("Rate limited, retrying later...");
       }
     };
-    
+
     fetchUserData();
   }, []);
 
   const handleCheckout = async () => {
-      if (items.length === 0) return;
+    if (items.length === 0) return;
 
-      if (role === "Employee" && !selectedCustomer) {
-        toastAlert("Please select a customer", "error");
-        return;
+    if (role === "Employee" && !selectedCustomer) {
+      toastAlert("Please select a customer", "error");
+      return;
+    }
+
+    try {
+      const payload = {
+        employee_id: role === "Employee" ? employeeId : null,
+        customer_id: role === "Employee" ? selectedCustomer?.id : null,
+        items: items.map((item) => {
+          const sellingPrice =
+            item.base_percent > 0
+              ? Math.round(item.price * (1 - item.base_percent / 100))
+              : item.price;
+
+          console.log(
+            `Product: ${item.product_name} | Discount ID: ${item.discount_id} | Base %: ${item.base_percent}`,
+          );
+
+          return {
+            product_id: item.id,
+            quantity: item.quantity,
+            selling_price: sellingPrice,
+            discount_id: item.discount_id || null,
+          };
+        }),
+      };
+
+      console.log("📦 Sending payload:", payload);
+
+      const response = await apiFetch("/api/orders/create/", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      toastAlert("Order placed successfully", "success");
+      dispatch(clearCart());
+      dispatch(closeCart());
+
+      if (role === "Employee") {
+        window.location.href = `/messages?conversation_id=${response.conversation_id}`;
+      } else {
+        // ✅ Retailer/Builder/etc — redirect with system_text in URL
+        const encodedText = encodeURIComponent(response.system_text || "");
+        window.location.href = `/messages?prefill=${encodedText}`;
+      }
+    } catch (err) {
+      console.error("❌ Checkout error:", err);
+      // 1. Try to get the specific error message from the backend response
+      let errorMessage = "Order failed";
+
+      if (err.responseData && err.responseData.error) {
+        // This matches the {"error": "..."} format from your Django view
+        errorMessage = err.responseData.error;
+      } else if (err.message) {
+        errorMessage = err.message;
       }
 
-      try {
-        const payload = {
-          employee_id: role === "Employee" ? employeeId : null,
-          customer_id: role === "Employee" ? selectedCustomer?.id : null,
-          items: items.map((item) => {
-            const sellingPrice =
-              item.base_percent > 0
-                ? Math.round(item.price * (1 - item.base_percent / 100))
-                : item.price;
-
-            console.log(`Product: ${item.product_name} | Discount ID: ${item.discount_id} | Base %: ${item.base_percent}`);
-
-            return {
-              product_id: item.id,
-              quantity: item.quantity,
-              selling_price: sellingPrice,
-              discount_id: item.discount_id || null,
-            };
-      }),
-        };
-
-        console.log("📦 Sending payload:", payload);
-
-        const response = await apiFetch("/api/orders/create/", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-
-        toastAlert("Order placed successfully", "success");
-        dispatch(clearCart());
-        dispatch(closeCart());
-
-        if (role === "Employee") {
-          window.location.href = `/messages?conversation_id=${response.conversation_id}`;
-        } else {
-          // ✅ Retailer/Builder/etc — redirect with system_text in URL
-          const encodedText = encodeURIComponent(response.system_text || "");
-          window.location.href = `/messages?prefill=${encodedText}`;
-        }
-
-      } catch (err) {
-        console.error("❌ Checkout error:", err);
-        // 1. Try to get the specific error message from the backend response
-        let errorMessage = "Order failed"; 
-        
-        if (err.responseData && err.responseData.error) {
-            // This matches the {"error": "..."} format from your Django view
-            errorMessage = err.responseData.error;
-        } else if (err.message) {
-            errorMessage = err.message;
-        }
-
-        // 2. Display the actual backend error (e.g., "Maximum 3 pending orders...")
-        toastAlert(errorMessage, "error");
-      }
-    };
-
+      // 2. Display the actual backend error (e.g., "Maximum 3 pending orders...")
+      toastAlert(errorMessage, "error");
+    }
+  };
 
   const fetchConsumers = async () => {
     if (!employeeId) return;
@@ -120,13 +120,13 @@ const CartSidebar = () => {
     try {
       setLoadingConsumers(true);
       const data = await apiFetch(`/api/users/employee/consumers/`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ userId: employeeId }),
       });
       setConsumers(data);
     } catch (err) {
-      console.error('❌ Fetch error:', err);
-      toastAlert('Could not load consumers', 'error');
+      console.error("❌ Fetch error:", err);
+      toastAlert("Could not load consumers", "error");
     } finally {
       setLoadingConsumers(false);
     }
@@ -142,7 +142,9 @@ const CartSidebar = () => {
       {/* Backdrop */}
       <div
         className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-300 ${
-          isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          isOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
         }`}
         onClick={() => dispatch(closeCart())}
       />
@@ -263,14 +265,16 @@ const CartSidebar = () => {
             <hr className="border-gray-100" />
 
             {/* Select Customer */}
-            {role === 'Employee' && (
+            {role === "Employee" && (
               <>
-                <button 
+                <button
                   onClick={handleOpenModal}
                   className="inline-flex items-center gap-2 px-2 py-1.5 border border-[#F7941D] rounded-lg text-[#F7941D] text-sm hover:bg-orange-50 transition"
                 >
                   <User size={17} />
-                  {selectedCustomer ? `Customer: ${selectedCustomer.customer_name}` : "Select Customer"}
+                  {selectedCustomer
+                    ? `Customer: ${selectedCustomer.customer_name}`
+                    : "Select Customer"}
                 </button>
                 <hr className="border-gray-100" />
               </>
@@ -289,7 +293,8 @@ const CartSidebar = () => {
             {/* Checkout */}
             <button
               onClick={handleCheckout}
-              className="w-full mx-auto block py-2 bg-[#F7941D] text-white rounded-lg hover:bg-[#e8860f] transition text-xs tracking-wide">
+              className="w-full mx-auto block py-2 bg-[#F7941D] text-white rounded-lg hover:bg-[#e8860f] transition text-xs tracking-wide"
+            >
               Checkout
             </button>
 
@@ -304,7 +309,7 @@ const CartSidebar = () => {
         )}
       </div>
 
-      <SelectCustomerModal 
+      <SelectCustomerModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         loading={loadingConsumers}

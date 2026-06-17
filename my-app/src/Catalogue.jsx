@@ -1,6 +1,6 @@
 import { Phone, Award, Truck } from "lucide-react";
 
-import {useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 
 import apiFetch from "./utils/apiClient";
 
@@ -10,18 +10,16 @@ import { useOutletContext } from "react-router-dom";
 import ProductModal from "./ProductModal";
 
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart, selectCartItems } from "./store/cartSlice";
+import { addToCart, selectCartItems } from "./store/Cartslice";
 
 const Pill = ({ label, active, onClick }) => (
-
   <button
-
     onClick={onClick}
-
     className={`px-5 py-2 rounded-full border text-sm transition
-      ${active
-        ? "bg-[#F7941D] text-white border-[#F7941D]"
-        : "bg-white text-gray-700 border-gray-300 hover:border-[#F7941D]"
+      ${
+        active
+          ? "bg-[#F7941D] text-white border-[#F7941D]"
+          : "bg-white text-gray-700 border-gray-300 hover:border-[#F7941D]"
       }`}
   >
     {label}
@@ -29,38 +27,36 @@ const Pill = ({ label, active, onClick }) => (
 );
 
 const Catalogue = () => {
-
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedSubCategories, setSelectedSubCategories] = useState([]);
   const [selectedBrands, setSelectedBrands] = useState([]);
-  const [searchQuery, , setOnSearchEnter, setOnSearchClear] = useOutletContext() || [];
+  const [searchQuery, , setOnSearchEnter, setOnSearchClear] =
+    useOutletContext() || [];
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [categories, setCategories]         = useState([]);
-  const [subcategories, setSubCategories]  = useState([]);
-  const [brands, setBrands]                 = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [subcategories, setSubCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
 
   const [subLoading, setSubLoading] = useState(false);
   const [brandLoading, setBrandLoading] = useState(false);
   const [subError, setSubError] = useState(false);
   const [brandError, setBrandError] = useState(false);
-  const [products, setProducts]         = useState([]);
+  const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [isFiltered, setIsFiltered] = useState(false);
-  
+
   // 2. Inside the Catalogue component, add:
   const dispatch = useDispatch();
   const cartItems = useSelector(selectCartItems);
-  
 
   useEffect(() => {
-      
-      apiFetch('/api/product/categories/', { method: 'GET'})
-        .then(data => {
-          const finalData = Array.isArray(data) ? data : (data?.data ?? []);
-          setCategories(finalData);
-        })
-        .catch(err => console.error('❌ Failed to fetch categories:', err));
+    apiFetch("/api/product/categories/", { method: "GET" })
+      .then((data) => {
+        const finalData = Array.isArray(data) ? data : (data?.data ?? []);
+        setCategories(finalData);
+      })
+      .catch((err) => console.error("❌ Failed to fetch categories:", err));
   }, []);
 
   useEffect(() => {
@@ -77,11 +73,11 @@ const Catalogue = () => {
       setSubLoading(true);
     }, 2000); // 2 seconds delay
 
-    apiFetch('/api/product/subcategories/', {
-      method: 'POST',
-      body: JSON.stringify({ category: selectedCategory })
+    apiFetch("/api/product/subcategories/", {
+      method: "POST",
+      body: JSON.stringify({ category: selectedCategory }),
     })
-      .then(data => {
+      .then((data) => {
         const finalData = Array.isArray(data) ? data : (data?.data ?? []);
         setSubCategories(finalData);
       })
@@ -89,12 +85,11 @@ const Catalogue = () => {
         setSubError(true);
       })
       .finally(() => {
-        clearTimeout(timer);   // stop timer
-        setSubLoading(false);  // hide loader
+        clearTimeout(timer); // stop timer
+        setSubLoading(false); // hide loader
       });
-
   }, [selectedCategory]);
-  
+
   useEffect(() => {
     if (!selectedSubCategories.length) {
       setBrands([]);
@@ -109,11 +104,11 @@ const Catalogue = () => {
       setBrandLoading(true);
     }, 2000);
 
-    apiFetch('/api/product/brands-by-subcategory/', {
-      method: 'POST',
-      body: JSON.stringify({ sub_category: selectedSubCategories })
+    apiFetch("/api/product/brands-by-subcategory/", {
+      method: "POST",
+      body: JSON.stringify({ sub_category: selectedSubCategories }),
     })
-      .then(data => {
+      .then((data) => {
         const finalData = Array.isArray(data) ? data : (data?.data ?? []);
         setBrands(finalData);
       })
@@ -124,33 +119,32 @@ const Catalogue = () => {
         clearTimeout(timer);
         setBrandLoading(false);
       });
-
   }, [selectedSubCategories]);
 
-    // ── Core fetch helper ─────────────────────────────────────────────────────
+  // ── Core fetch helper ─────────────────────────────────────────────────────
   const fetchProducts = useCallback(async (filters = {}) => {
     setProductsLoading(true);
     try {
       let currentPage = 1;
-      let totalPages  = 1;
+      let totalPages = 1;
       let allProducts = [];
 
       while (currentPage <= totalPages) {
-        const res = await apiFetch('/api/product/', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ page: currentPage, ...filters })
+        const res = await apiFetch("/api/product/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ page: currentPage, ...filters }),
         });
 
         const data = Array.isArray(res) ? res : (res?.data ?? []);
         allProducts = [...allProducts, ...data];
-        totalPages   = res?.total_pages ?? 1;
+        totalPages = res?.total_pages ?? 1;
         currentPage += 1;
       }
 
       setProducts(allProducts);
     } catch (err) {
-      console.error('❌ Failed to fetch products:', err);
+      console.error("❌ Failed to fetch products:", err);
     } finally {
       setProductsLoading(false);
     }
@@ -172,9 +166,9 @@ const Catalogue = () => {
 
   useEffect(() => {
     setOnSearchClear?.(() => () => {
-        fetchProducts();  // ✅ fetch all products with no filters
+      fetchProducts(); // ✅ fetch all products with no filters
     });
-}, [fetchProducts, setOnSearchClear]);
+  }, [fetchProducts, setOnSearchClear]);
 
   // ── Category click ────────────────────────────────────────────────────────
   const handleCategoryClick = (catId) => {
@@ -192,11 +186,11 @@ const Catalogue = () => {
   // ── Subcategory toggle ────────────────────────────────────────────────────
   const handleSubCategoryToggle = (id) => {
     const updated = selectedSubCategories.includes(id)
-      ? selectedSubCategories.filter(x => x !== id)
+      ? selectedSubCategories.filter((x) => x !== id)
       : [...selectedSubCategories, id];
     setSelectedSubCategories(updated);
     fetchProducts({
-      category:     selectedCategory   || undefined,
+      category: selectedCategory || undefined,
       sub_category: updated.length === 1 ? updated[0] : undefined,
     });
   };
@@ -204,13 +198,16 @@ const Catalogue = () => {
   // ── Brand toggle ──────────────────────────────────────────────────────────
   const handleBrandToggle = (id) => {
     const updated = selectedBrands.includes(id)
-      ? selectedBrands.filter(x => x !== id)
+      ? selectedBrands.filter((x) => x !== id)
       : [...selectedBrands, id];
     setSelectedBrands(updated);
     fetchProducts({
-      category:     selectedCategory        || undefined,
-      sub_category: selectedSubCategories.length === 1 ? selectedSubCategories[0] : undefined,
-      brand:        updated.length === 1 ? updated[0] : undefined,
+      category: selectedCategory || undefined,
+      sub_category:
+        selectedSubCategories.length === 1
+          ? selectedSubCategories[0]
+          : undefined,
+      brand: updated.length === 1 ? updated[0] : undefined,
     });
   };
 
@@ -219,7 +216,9 @@ const Catalogue = () => {
     return products.filter((product) => {
       const subCategoryMatch =
         selectedSubCategories.length === 0 ||
-        selectedSubCategories.map(Number).includes(Number(product.sub_category_id));
+        selectedSubCategories
+          .map(Number)
+          .includes(Number(product.sub_category_id));
 
       const brandMatch =
         selectedBrands.length === 0 ||
@@ -229,13 +228,18 @@ const Catalogue = () => {
     });
   }, [products, selectedSubCategories, selectedBrands]);
 
-  const normalize     = (text = "") => text.toLowerCase().trim();
-  const openProductModal  = (product) => { setSelectedProduct(product); setIsModalOpen(true); };
-  const closeProductModal = () => { setSelectedProduct(null); setIsModalOpen(false); };
+  const normalize = (text = "") => text.toLowerCase().trim();
+  const openProductModal = (product) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+  const closeProductModal = () => {
+    setSelectedProduct(null);
+    setIsModalOpen(false);
+  };
 
   return (
-
-    < div className="w-full bg-white min-h-full" >
+    <div className="w-full bg-white min-h-full">
       <div className="bg-gray-50 px-8">
         <div className="grid grid-cols-1 pt-6 pb-12 lg:grid-cols-2 gap-8 bg-gray-50">
           {/* LEFT CONTENT */}
@@ -254,9 +258,7 @@ const Catalogue = () => {
               <button className="flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-[#F7941D] text-white rounded-lg hover:opacity-90 transition text-sm sm:text-base">
                 <Phone size={16} />
                 {/* Mobile Text */}
-                <span className="sm:hidden">
-                  Contact
-                </span>
+                <span className="sm:hidden">Contact</span>
 
                 {/* Desktop Text */}
                 <span className="hidden sm:inline">
@@ -282,8 +284,6 @@ const Catalogue = () => {
             </div>
           </div>
 
-
-
           {/* RIGHT FEATURES */}
           <div className="space-y-6">
             <div className="bg-white rounded-xl shadow-sm p-6">
@@ -302,7 +302,6 @@ const Catalogue = () => {
             <div className="bg-white rounded-xl shadow-sm p-6">
               <Truck className="text-[#F7941D] mb-4" size={26} />
               <div>
-
                 <h4 className="font-medium text-gray-900 mb-1">
                   Punjab-wide Delivery
                 </h4>
@@ -319,9 +318,7 @@ const Catalogue = () => {
       <hr className="border-gray-200" />
 
       <div className="px-4 sm:px-10 pt-8 pb-2 bg-white">
-        <p className="text-gray-700 mt-1 font-medium">
-          Browse by Categories
-        </p>
+        <p className="text-gray-700 mt-1 font-medium">Browse by Categories</p>
       </div>
 
       {/* ---------- CATEGORY SELECTION ---------- */}
@@ -332,37 +329,38 @@ const Catalogue = () => {
         <div className="w-full">
           {/* The 'overflow-x-auto' allows scrolling, 'no-scrollbar' is optional for aesthetics */}
           <div className="flex flex-nowrap sm:flex-wrap overflow-x-auto border-b border-gray-200 scrollbar-hide">
-
             <button
               onClick={() => {
-                handleCategoryClick(null)
+                handleCategoryClick(null);
               }}
-              className={`whitespace-nowrap px-6 py-3 text-sm font-semibold transition-all duration-200 border-b-2 flex-shrink-0 ${selectedCategory === null
+              className={`whitespace-nowrap px-6 py-3 text-sm font-semibold transition-all duration-200 border-b-2 flex-shrink-0 ${
+                selectedCategory === null
                   ? "border-[#ff7a00] text-[#ff7a00]"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
+              }`}
             >
               All Categories
             </button>
 
-            {categories && categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => {
-                  handleCategoryClick(cat.id)
-                }}
-                className={`whitespace-nowrap px-6 py-3 text-sm font-semibold transition-all duration-200 border-b-2 flex-shrink-0 ${selectedCategory === cat.id
-                    ? "border-[#ff7a00] text-[#ff7a00]"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            {categories &&
+              categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    handleCategoryClick(cat.id);
+                  }}
+                  className={`whitespace-nowrap px-6 py-3 text-sm font-semibold transition-all duration-200 border-b-2 flex-shrink-0 ${
+                    selectedCategory === cat.id
+                      ? "border-[#ff7a00] text-[#ff7a00]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
-              >
-                {cat.name || cat.category}
-              </button>
-            ))}
+                >
+                  {cat.name || cat.category}
+                </button>
+              ))}
           </div>
         </div>
       </div>
-
 
       {/* Check if subCategories exists at all */}
       {subError && (
@@ -376,37 +374,40 @@ const Catalogue = () => {
           Loading sub-categories...
         </p>
       )}
-      
-        <>
-          {/* If it exists, only show the section if a Category is selected */}
-          {selectedCategory && (
-            <div className="space-y-3 px-8 sm:px-14 transition-all mb-4">
-              <h2 className="sm:hidden text-xs uppercase tracking-wider font-bold text-gray-400">
-                Sub-Categories
-              </h2>
-              <h2 className="hidden sm:block text-xs uppercase tracking-wider font-bold text-gray-400">
-                Sub-Categories ({selectedSubCategories.length} selected)
-              </h2>
 
-              <div className="flex flex-wrap gap-2">
-                {/* Check if the filtered list has items */}
-                {!subcategories || subcategories.length === 0 ? (
-                  <p className="text-gray-400 text-sm italic py-2">
-                    No sub-categories available for this category.
-                  </p>
-                ) : (
-                  subcategories.map((sub) => (
-                    <Pill key={sub.id} label={sub.name} active={selectedSubCategories.includes(sub.id)}
-                      onClick={() => {
-                        handleSubCategoryToggle(sub.id)
-                      }}
-                    />
-                  ))
-                )}
-              </div>
+      <>
+        {/* If it exists, only show the section if a Category is selected */}
+        {selectedCategory && (
+          <div className="space-y-3 px-8 sm:px-14 transition-all mb-4">
+            <h2 className="sm:hidden text-xs uppercase tracking-wider font-bold text-gray-400">
+              Sub-Categories
+            </h2>
+            <h2 className="hidden sm:block text-xs uppercase tracking-wider font-bold text-gray-400">
+              Sub-Categories ({selectedSubCategories.length} selected)
+            </h2>
+
+            <div className="flex flex-wrap gap-2">
+              {/* Check if the filtered list has items */}
+              {!subcategories || subcategories.length === 0 ? (
+                <p className="text-gray-400 text-sm italic py-2">
+                  No sub-categories available for this category.
+                </p>
+              ) : (
+                subcategories.map((sub) => (
+                  <Pill
+                    key={sub.id}
+                    label={sub.name}
+                    active={selectedSubCategories.includes(sub.id)}
+                    onClick={() => {
+                      handleSubCategoryToggle(sub.id);
+                    }}
+                  />
+                ))
+              )}
             </div>
-          )}
-        </>
+          </div>
+        )}
+      </>
 
       {/* ---------- BRAND SELECTION ---------- */}
       {brandError && (
@@ -421,9 +422,9 @@ const Catalogue = () => {
         </p>
       )}
 
-        <>
-          {selectedSubCategories && (
-            <div className="space-y-3 px-8 sm:px-14 transition-all mb-4">
+      <>
+        {selectedSubCategories && (
+          <div className="space-y-3 px-8 sm:px-14 transition-all mb-4">
             {selectedCategory !== null && (
               <>
                 <h2 className="sm:hidden text-xs uppercase tracking-wider font-bold text-gray-400">
@@ -436,25 +437,27 @@ const Catalogue = () => {
               </>
             )}
 
-              <div className="flex flex-wrap gap-3">
-                {!brands || brands.length === 0 ? (
-                  selectedCategory !== null ? (
-                    <p className="text-gray-400 text-sm">
-                      No brands available for this sub-category.
-                    </p>
-                  ) : null
-                ) : (
-                  brands.map((brand) => (
-                    <Pill key={brand.id} label={brand.name} active={selectedBrands.includes(brand.id)}
-                      onClick={() => handleBrandToggle(brand.id)}/>
-                  ))
-                )}
-              </div>
+            <div className="flex flex-wrap gap-3">
+              {!brands || brands.length === 0 ? (
+                selectedCategory !== null ? (
+                  <p className="text-gray-400 text-sm">
+                    No brands available for this sub-category.
+                  </p>
+                ) : null
+              ) : (
+                brands.map((brand) => (
+                  <Pill
+                    key={brand.id}
+                    label={brand.name}
+                    active={selectedBrands.includes(brand.id)}
+                    onClick={() => handleBrandToggle(brand.id)}
+                  />
+                ))
+              )}
             </div>
-          )}
-        </>
-
-
+          </div>
+        )}
+      </>
 
       <div className="px-8 pb-10 grid grid-cols-1 sm:px-14 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {productsLoading && (
@@ -464,41 +467,40 @@ const Catalogue = () => {
         )}
 
         {!filteredProducts || filteredProducts.length === 0 ? (
-
           <div className="col-span-full min-h-[200px] flex flex-col items-center justify-center text-center">
+            <p className="text-gray-500 text-lg font-medium">
+              No products available
+            </p>
 
-            <p className="text-gray-500 text-lg font-medium">No products available</p>
-
-            <p className="text-gray-400 text-sm mt-2">Try changing keywords, brand, or category</p>
-
+            <p className="text-gray-400 text-sm mt-2">
+              Try changing keywords, brand, or category
+            </p>
           </div>
-
         ) : (
-
           filteredProducts.map((product) => {
             if (!product || !product.id) return null;
-            
-            
+
             // Inside filteredProducts.map((product) => { ...
 
             const isOutOfStock = product.current_stock <= 0;
             const isInCart = cartItems.some((c) => c.id === product.id);
 
             // Generate Image Source
-            const imageKey = (product.brand_name || "") + "_" + product.product_name.replaceAll(" ", "_");
+            const imageKey =
+              (product.brand_name || "") +
+              "_" +
+              product.product_name.replaceAll(" ", "_");
             const imageSrc = getProductImage(imageKey);
 
             return (
-              <div 
-                key={product.id} 
+              <div
+                key={product.id}
                 onClick={() => !isOutOfStock && openProductModal(product)}
                 className={`border border-gray-100 rounded-2xl bg-white p-4 shadow-sm transition-all flex flex-col h-full relative 
                   ${isOutOfStock ? "cursor-not-allowed" : "hover:shadow-md cursor-pointer"}`}
               >
-                
                 {/* --- IMAGE SECTION --- */}
                 <div className="relative flex justify-center items-center w-full h-[200px] mb-4 rounded-xl overflow-hidden group bg-gray-50">
-                  
                   {/* The Actual Product Image */}
                   {imageSrc ? (
                     <img
@@ -518,7 +520,7 @@ const Catalogue = () => {
                     <div className="absolute inset-0 flex items-center justify-center z-10">
                       {/* Diagonal Cross Lines across the image */}
                       <div className="absolute w-[140%] h-[1.5px] bg-[#F7941D]/40 -rotate-45"></div>
-                      
+
                       {/* Central Badge */}
                       <div className="bg-[#F7941D] text-white px-3 py-1.5 rounded-md shadow-lg transform -rotate-12 border-2 border-white">
                         <span className="text-[10px] font-black uppercase tracking-tighter">
@@ -531,19 +533,24 @@ const Catalogue = () => {
                   {/* Category Tag (Hidden if Out of Stock) */}
                   {!isOutOfStock && (
                     <span className="absolute top-2 right-2 bg-orange-500 text-white text-[10px] px-2 py-1 rounded-lg font-bold">
-                      {product.category_name || 'New'}
+                      {product.category_name || "New"}
                     </span>
                   )}
                 </div>
 
                 {/* --- DETAILS SECTION --- */}
                 <div className="flex flex-col flex-grow">
-                  <h3 className={`text-sm font-medium mb-1 truncate ${isOutOfStock ? "text-gray-400 line-through" : "text-gray-800"}`}>
+                  <h3
+                    className={`text-sm font-medium mb-1 truncate ${isOutOfStock ? "text-gray-400 line-through" : "text-gray-800"}`}
+                  >
                     {product.product_name}
                   </h3>
-                  
+
                   <p className="text-2xl font-['Raleway'] text-gray-800 mb-4">
-                    ₹{Math.round(product.price * (1 - (product.base_percent || 0) / 100)).toLocaleString("en-IN")}
+                    ₹
+                    {Math.round(
+                      product.price * (1 - (product.base_percent || 0) / 100),
+                    ).toLocaleString("en-IN")}
                   </p>
 
                   {/* --- DISABLED BUTTON LOGIC --- */}
@@ -551,32 +558,34 @@ const Catalogue = () => {
                     disabled={isOutOfStock || isInCart || !product.price}
                     onClick={(e) => {
                       e.stopPropagation();
-                      dispatch(addToCart({ ...product, quantity: 1, imageSrc }));
+                      dispatch(
+                        addToCart({ ...product, quantity: 1, imageSrc }),
+                      );
                     }}
                     className={`w-full py-3 rounded-xl font-semibold transition text-sm
-                      ${isOutOfStock 
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" 
-                        : isInCart 
-                        ? "bg-green-100 text-green-600" 
-                        : "bg-[#F7941D] hover:bg-[#F7941D]/90 text-white shadow-sm"
+                      ${
+                        isOutOfStock
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                          : isInCart
+                            ? "bg-green-100 text-green-600"
+                            : "bg-[#F7941D] hover:bg-[#F7941D]/90 text-white shadow-sm"
                       }`}
                   >
-                    {isOutOfStock ? "Currently Unavailable" : isInCart ? "Added ✓" : "Add to Cart"}
+                    {isOutOfStock
+                      ? "Currently Unavailable"
+                      : isInCart
+                        ? "Added ✓"
+                        : "Add to Cart"}
                   </button>
                 </div>
               </div>
             );
-        })
+          })
         )}
-
       </div>
       {isModalOpen && (
-        <ProductModal
-          product={selectedProduct}
-          onClose={closeProductModal}
-        />
+        <ProductModal product={selectedProduct} onClose={closeProductModal} />
       )}
-
     </div>
   );
 };

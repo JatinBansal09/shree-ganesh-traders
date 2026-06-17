@@ -1,0 +1,107 @@
+name: SGT Code Quality Checks
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+jobs:
+  backend-checks:
+    name: Django — Flake8, Bandit, Pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          cd my-app/backend
+          pip install -r requirements.txt
+          pip install flake8 bandit
+      - name: Flake8 — syntax and style
+        run: |
+          cd my-app/backend
+          flake8 base/ --max-line-length=120 --exclude=migrations/
+      - name: Bandit — security scan
+        run: |
+          cd my-app/backend
+          bandit -r base/ -ll --exclude base/migrations
+      - name: Pytest
+        env:
+          DJANGO_SETTINGS_MODULE: backend.settings
+          SECRET_KEY: github-actions-test-key
+          DEBUG: "True"
+          DB_ENGINE: django.db.backends.sqlite3
+          DB_NAME: ":memory:"
+          DB_HOST: localhost
+          DB_USER: root
+          DB_PASSWORD: password
+          DB_PORT: "3306"
+          ENCRYPTION_KEY: Mp67myESu4e90MSxYJnl9g8cDpeevElr_REjp73mf5s=
+          TWILIO_ACCOUNT_SID: ACtest
+          TWILIO_AUTH_TOKEN: testtoken
+          TWILIO_NUMBER: "+10000000000"
+          OWNER_PHONE: "+910000000000"
+        run: |
+          cd my-app/backend
+          pytest tests/ -v
+      - name: Django system check
+        env:
+          DJANGO_SETTINGS_MODULE: backend.settings  # ← added
+          SECRET_KEY: github-actions-test-key
+          DEBUG: "True"
+          DB_ENGINE: django.db.backends.sqlite3
+          DB_NAME: ":memory:"
+          DB_HOST: localhost                         # ← added
+          DB_PORT: "3306"                            # ← added
+          ENCRYPTION_KEY: Mp67myESu4e90MSxYJnl9g8cDpeevElr_REjp73mf5s=
+          TWILIO_ACCOUNT_SID: ACtest
+          TWILIO_AUTH_TOKEN: testtoken
+          TWILIO_NUMBER: "+10000000000"
+          OWNER_PHONE: "+910000000000"
+        run: |
+          cd my-app/backend
+          python manage.py check
+      - name: Check for missing migrations
+        env:
+          DJANGO_SETTINGS_MODULE: backend.settings  # ← added
+          SECRET_KEY: github-actions-test-key
+          DEBUG: "True"
+          DB_ENGINE: django.db.backends.sqlite3
+          DB_NAME: ":memory:"
+          DB_HOST: localhost                         # ← added
+          DB_PORT: "3306"                            # ← added
+          ENCRYPTION_KEY: Mp67myESu4e90MSxYJnl9g8cDpeevElr_REjp73mf5s=
+          TWILIO_ACCOUNT_SID: ACtest
+          TWILIO_AUTH_TOKEN: testtoken
+          TWILIO_NUMBER: "+10000000000"
+          OWNER_PHONE: "+910000000000"
+        run: |
+          cd my-app/backend
+          python manage.py makemigrations --check --dry-run
+  frontend-checks:
+    name: React — ESLint and Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: my-app/package-lock.json
+      - name: Install dependencies
+        run: |
+          cd my-app
+          npm install
+      - name: ESLint — check for JS/JSX errors
+        run: |
+          cd my-app
+          npm run lint
+      - name: Build — check for build errors
+        run: |
+          cd my-app
+          npm run build
+        env:
+          VITE_API_URL: http://localhost:8000

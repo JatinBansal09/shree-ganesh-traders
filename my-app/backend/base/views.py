@@ -29,6 +29,8 @@ import hmac
 import json
 import os
 import re
+import logging
+logger = logging.getLogger('base')
 
 User = get_user_model()
 
@@ -66,7 +68,7 @@ class InquirySubmissionView(APIView):
                 )
                 send_owner_sms_report(sms_body)
             except Exception as sms_err:
-                print(f"SMS failed: {sms_err}")
+                logger.error(f"SMS failed: {sms_err}")
 
             return Response({"message": "Success"}, status=status.HTTP_201_CREATED)
 
