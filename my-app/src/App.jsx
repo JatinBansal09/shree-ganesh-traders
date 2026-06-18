@@ -85,7 +85,7 @@ function App() {
       <div className="w-screen h-screen bg-white dark:bg-slate-950">
         <BrowserRouter>
           <ThemeController />
-          <CartSidebar />
+          <CartSidebarController />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<ModernLoginPage />} />
@@ -113,6 +113,13 @@ function App() {
     </LanguageProvider>
   )
 }
+
+const CartSidebarController = () => {
+  const location = useLocation();
+  const hiddenPages = ["/login", "/register"];
+  if (hiddenPages.includes(location.pathname)) return null;
+  return <CartSidebar />;
+};
 
 const ThemeController = () => {
   const location = useLocation();
