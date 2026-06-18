@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { logoutUser } from './Logout';
 import { toastAlert } from './alerts';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 export const useAuth = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +86,7 @@ export const useAuth = () => {
       
       console.log('🔄 checkAuth running...');
       
-      const response = await fetch('http://localhost:8000/api/user-info/', {
+      const response = await fetch(`${API_BASE}/api/user-info/`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

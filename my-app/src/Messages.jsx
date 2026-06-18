@@ -1852,7 +1852,10 @@ const Messages = () => {
       wsRef.current = null;
     }
 
-    const ws = new WebSocket(`ws://localhost:8000/ws/messages/${activeConv.id}/`);
+    const WS_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000')
+      .replace('https://', 'wss://')
+      .replace('http://', 'ws://');
+    const ws = new WebSocket(`${WS_BASE}/ws/messages/${activeConv.id}/`);
 
     ws.onopen = () => {
       console.log("WS connected:", activeConv.id);

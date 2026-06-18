@@ -1,9 +1,11 @@
 // auth_utils.js - FIXED
 import { useSelector, useDispatch } from 'react-redux';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 export const getUserRole = async () => {
   try {
-    const response = await fetch("http://localhost:8000/api/user-info/", {
+    const response = await fetch(`${API_BASE}/api/user-info/`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -25,7 +27,7 @@ export const getUserRole = async () => {
 // auth_utils.js
 export const getUserInfo = async () => {
   try {
-  const response = await fetch('http://localhost:8000/api/user-info/', {
+  const response = await fetch(`${API_BASE}/api/user-info/`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -50,7 +52,7 @@ export const getUserInfo = async () => {
 
 export const getActualUserRole = async () => {
   try {
-    const response = await fetch('http://localhost:8000/api/actual-user-role/', {
+    const response = await fetch(`${API_BASE}/api/actual-user-role/`, {
       method: 'GET',
       credentials: 'include',
     });

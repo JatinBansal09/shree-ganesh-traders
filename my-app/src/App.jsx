@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { useEffect } from "react";
 import ModernLoginPage from './Login'
 import RegistrationPage from "./Registration";
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 import Catalogue from './Catalogue'
 import Users from './Users'
 import RequireAuth from './RequireAuth'
@@ -65,7 +67,7 @@ function App() {
     const user_id_data   = localStorage.getItem('user_id') || '';
     if (encrypted_data) {
       navigator.sendBeacon(
-        "http://localhost:8000/api/logout/",
+        `${API_BASE}/api/logout/`,
         new Blob([JSON.stringify({ encrypted_data, user_id_data })], {
           type: "application/json"
         })

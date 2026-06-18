@@ -1,12 +1,14 @@
 import { toastAlert } from "./alerts";
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 export const logoutUser = async (setIsLoggingOut) => {
   // ⬇️ Get user_id BEFORE clearing
   try {
     // ⬇️ Send logout request with user_id
     const encrypted_data = localStorage.getItem('data') || '';
     const user_id_data = localStorage.getItem('user_id') || '';
-    const response = await fetch('http://localhost:8000/api/logout/', {
+    const response = await fetch(`${API_BASE}/api/logout/`, {
       method: 'POST',
       credentials: 'include',
       headers: {

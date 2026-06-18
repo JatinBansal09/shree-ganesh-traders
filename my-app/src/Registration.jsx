@@ -3,7 +3,8 @@ import axios from "axios";
 import { validateUsername, validatePassword, validateEmail, validatePhone } from "./utils/validation";
 import { useTranslation } from "./i18n";
 
-const API_REGISTER_URL = "http://localhost:8000/api/register/";
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_REGISTER_URL = `${API_BASE}/api/register/`;
 
 const RegistrationPage = () => {
     const { t } = useTranslation();
