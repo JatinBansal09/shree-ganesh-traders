@@ -1,7 +1,9 @@
 # Environment variables — keep .env but exclude local overrides
 .env.local
 .env.*.local
-
+.env
+my-app/backend/.env
+my-app/backend/.env.prod
 # Python
 __pycache__/
 *.pyc

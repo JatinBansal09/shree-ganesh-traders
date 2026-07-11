@@ -1,10 +1,12 @@
 from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.core.cache import cache
 from django.utils import timezone
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
-from rest_framework import status, serializers
+from rest_framework import generics, status, serializers
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
@@ -15,11 +17,12 @@ from rest_framework.decorators import api_view, permission_classes
 from .services.sms_service import send_overdue_sms, send_owner_sms_report, send_sms
 from django.db import transaction, IntegrityError
 from dateutil.relativedelta import relativedelta
-from django.db.models import F, Q, Max
+from django.db.models import F, Q, Max, OuterRef, Prefetch, Subquery, Count
 from django.utils import timezone
 from django.conf import settings
 from cryptography.fernet import Fernet
 from twilio.rest import Client
+from django.core.cache import cache
 from django.utils import timezone
 from django.db.models import Sum
 from django.views import View
@@ -40,6 +43,36 @@ cipher_suite = Fernet(settings.ENCRYPTION_KEY.encode())
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+
+FORM_OPTIONS_CACHE_KEY = 'form_options_v1'
+
+VALID_FORWARD_ACTIONS = ["order_packed", "order_loaded", "order_on_the_way"]
+
+PREREQUISITE_MAP = {
+    "order_packed":    "accepted",
+    "order_loaded":    "order_packed",
+    "order_on_the_way": "order_loaded",
+}
+
+DELAYABLE_FROM = {"order_packed", "order_loaded", "order_on_the_way"}
+
+ACTION_LABELS = {
+    "order_packed":     "Order packed and ready for dispatch",
+    "order_loaded":     "Order loaded onto vehicle",
+    "order_on_the_way": "Order is on the way",
+    "delayed":          "Order delivery has been delayed",
+    "resume":           "Order delivery has resumed",
+    "order_received":   "Order received by customer",
+}
+
+MSG_TYPE_MAP = {
+    "order_packed":     "order_packed",
+    "order_loaded":     "order_loaded",
+    "order_on_the_way": "order_on_the_way",
+    "delayed":          "order_delayed",
+    "resume":           "order_resumed",
+    "order_received":   "order_received",
+}
 
 class InquirySubmissionView(APIView):
     # This allows anyone (even people not logged in) to send the form
@@ -74,6 +107,17 @@ class InquirySubmissionView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+def refresh_discount_groups_cache():
+    """Patch just the discount_groups slice of the cached form options blob."""
+    cached = cache.get(FORM_OPTIONS_CACHE_KEY)
+    if cached is None:
+        # Nothing cached yet — the next GET will populate it fresh anyway.
+        return
+
+    discount_groups = DiscountGroup.objects.all().order_by('name')
+    cached["data"]["discount_groups"] = DiscountGroupSerializer(discount_groups, many=True).data
+    cache.set(FORM_OPTIONS_CACHE_KEY, cached, 60 * 60 * 24)
 
 def push_message_to_ws(conversation_id, message_data):
     channel_layer = get_channel_layer()
@@ -112,10 +156,13 @@ def get_actual_user_role(user):
     """Get the actual user role from CustomerType"""
     try:
         customer = Customer.objects.filter(user=user).first()
+        if customer is None:
+            return "Unknown"
+        if customer.customer_type is None:
+            return "Unknown"
         return customer.customer_type.type_name
-    except Customer.DoesNotExist:
+    except Exception:
         return "Unknown"
-
 # views.py - CLASS-BASED (CORRECT)
 
 class DebugAuthView(APIView):
@@ -432,20 +479,10 @@ class UserCustomerRowSerializer(serializers.ModelSerializer):
 
 
     def get_logged_in_at(self, obj):
-
-        session = (
-
-            UserSession.objects
-
-            .filter(user=obj.user, logged_out_at__isnull=True)
-
-            .order_by("-logged_in_at")
-
-            .first()
-
-        )
-
-        return session.logged_in_at if session else None
+        # Read the annotated field calculated by the database.
+        # Use getattr() with a default of None just in case you ever reuse 
+        # this serializer somewhere else without the annotation.
+        return getattr(obj, 'last_login', None)
 
 
 
@@ -604,6 +641,40 @@ class DiscountGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model  = DiscountGroup
         fields = ['disc_id', 'name', 'base_percent']
+
+    def validate_name(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("name is required.")
+        return value
+
+    def validate(self, attrs):
+        name = attrs.get("name")
+        if name is None:
+            return attrs
+
+        instance = self.instance
+        existing = (
+            DiscountGroup.objects.filter(name__iexact=name)
+            .exclude(disc_id=instance.disc_id if instance else None)
+        )
+        if existing.exists():
+            raise serializers.ValidationError({
+                "name": f"A discount group named '{name}' already exists."
+            })
+
+        attrs["name"] = name
+        return attrs
+
+    def create(self, validated_data):
+        instance = super().create(validated_data)
+        refresh_discount_groups_cache()
+        return instance
+
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        refresh_discount_groups_cache()
+        return instance
 
 class ProductCategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -1359,14 +1430,22 @@ class UserCustomerListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        staff_users = User.objects.filter(is_superuser=False, is_staff=True)
+        latest_session_subquery = UserSession.objects.filter(
+            user=OuterRef('id'),  # For Staff, we match on the User ID directly
+            logged_out_at__isnull=True
+        ).order_by('-logged_in_at').values('logged_in_at')[:1]
+
+        # --- 1. OPTIMIZED STAFF USERS ---
+        # We use .annotate() to attach the login time in ONE single SQL query. No more 'for' loop queries!
+        staff_users = User.objects.filter(
+            is_superuser=False, 
+            is_staff=True
+        ).annotate(
+            session_login=Subquery(latest_session_subquery)
+        )
         
         formatted_staff = []
         for user in staff_users:
-            staff_session = UserSession.objects.filter(
-                user=user,
-                logged_out_at__isnull=True
-            ).order_by('-logged_in_at').first()
 
             formatted_staff.append({
             'user_id': user.id,
@@ -1378,17 +1457,23 @@ class UserCustomerListView(APIView):
             'phone_number': user.last_name or '',  # Your code uses '-' here
             'address': '',
             'customer_type': 'Employee',
-            'logged_in_at': staff_session.logged_in_at if staff_session else None,
+            'logged_in_at': user.session_login if user.session_login else None,
         })
 
         # 2. Get Customers (EXCLUDE staff users to prevent duplicates)
+        latest_customer_session = UserSession.objects.filter(
+            user=OuterRef('user_id'),
+            logged_out_at__isnull=True
+        ).order_by('-logged_in_at').values('logged_in_at')[:1]
+
         customers = (
             Customer.objects
             .select_related("user", "customer_type")
             .exclude(user__is_superuser=True)
             .exclude(user__is_staff=True)
+            # Attach the login time here so the serializer doesn't have to look it up
+            .annotate(session_login=Subquery(latest_customer_session))
         )
-        
         serializer = UserCustomerRowSerializer(customers, many=True)
         
         # 3. Combine
@@ -1652,6 +1737,7 @@ class BulkDiscountView(APIView):
         })
 
 @csrf_exempt
+@login_required
 def manage_attribute(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid method"}, status=405)
@@ -1676,6 +1762,8 @@ def manage_attribute(request):
             if attr_type == "category":
                 if action == "add":
                     ProductCategory.objects.get_or_create(category=name)
+                    cache.delete('all_categories')
+                    cache.delete('form_options_v1')
                     return JsonResponse({"message": "Category added"})
 
                 elif action == "replace":
@@ -1696,6 +1784,9 @@ def manage_attribute(request):
 
                     # ✅ FIX: .filter().delete() instead of .get().delete()
                     ProductCategory.objects.filter(id=source_id).delete()
+                    cache.delete('all_categories')
+                    cache.delete_pattern('subcategories_cat_*')
+                    cache.delete('form_options_v1')
                     return JsonResponse({"message": "Category merged and deleted"})
 
             # =========================
@@ -1706,6 +1797,9 @@ def manage_attribute(request):
                     category = ProductCategory.objects.get(id=category_id)
                     # ✅ FIX: get_or_create to avoid IntegrityError on duplicates
                     ProductSubCategory.objects.get_or_create(sub_category=name, category=category)
+                    cache.delete('all_categories')
+                    cache.delete_pattern('subcategories_cat_*')
+                    cache.delete('form_options_v1')
                     return JsonResponse({"message": "Subcategory added"})
 
                 elif action == "replace":
@@ -1737,6 +1831,9 @@ def manage_attribute(request):
 
                     # ✅ FIX: .filter().delete() instead of .get().delete()
                     ProductSubCategory.objects.filter(id=source_id).delete()
+                    cache.delete('all_categories')
+                    cache.delete_pattern('subcategories_cat_*')
+                    cache.delete('form_options_v1')
                     return JsonResponse({"message": "Subcategory merged"})
 
             # =========================
@@ -1745,6 +1842,9 @@ def manage_attribute(request):
             elif attr_type == "brand":
                 if action == "add":
                     ProductBrand.objects.get_or_create(brand=name)
+                    cache.delete_pattern('brands_sub_*')
+                    cache.delete('brands_all')
+                    cache.delete('form_options_v1')
                     return JsonResponse({"message": "Brand added"})
 
                 elif action == "replace":
@@ -1776,6 +1876,9 @@ def manage_attribute(request):
 
                     # ✅ FIX: .filter().delete() instead of .get().delete()
                     ProductBrand.objects.filter(id=source_id).delete()
+                    cache.delete_pattern('brands_sub_*')
+                    cache.delete('brands_all')
+                    cache.delete('form_options_v1')
                     return JsonResponse({"message": "Brand merged"})
 
         return JsonResponse({"error": "Invalid configuration"}, status=400)
@@ -1921,7 +2024,9 @@ class UserConsumerListView(APIView):  # ⬅️ Fixed class name (capital U)
         try:
             # ⬇️ Query customers (adjust field name based on your model)
             # Option 1: If Customer has user_id field
-            customers = Customer.objects.filter(user__id=emp_id)
+            customers = Customer.objects.filter(
+                user__id=emp_id
+            ).select_related('user', 'customer_type')
             
             # Option 2: If Customer has user ForeignKey
             # customers = Customer.objects.filter(user__id=emp_id)
@@ -1956,6 +2061,10 @@ class UserMasterDataView(APIView):
 class Get_Form_Options(APIView):
     permission_classes = [IsAuthenticated]
 
+    CACHE_KEY = 'form_options_v1'
+    CACHE_TTL = 60 * 60 * 24  # 24 hours
+
+
     def get(self, request):
         """
         Retrieve all static form options in a single call:
@@ -1964,6 +2073,10 @@ class Get_Form_Options(APIView):
         - Materials
         - Discount Groups
         """
+        cached = cache.get(self.CACHE_KEY)
+        if cached:
+            return Response(cached)
+
         print(f"\n{'='*60}")
         print(f"📋 GET FORM OPTIONS REQUEST")
         print(f"{'='*60}")
@@ -1976,29 +2089,24 @@ class Get_Form_Options(APIView):
             materials       = ProductMaterial.objects.all().order_by('name')
             discount_groups = DiscountGroup.objects.all().order_by('name')
 
-            print(f"✅ Categories     : {categories.count()}")
-            print(f"✅ Units          : {units.count()}")
-            print(f"✅ Materials      : {materials.count()}")
-            print(f"✅ Discount Groups: {discount_groups.count()}")
+            # ── Serialize ──────────────────────────────────────────
+            data = {
+                "success": True,
+                "data": {
+                    "categories":      ProductCategorySerializer(categories, many=True).data,
+                    "units":           ProductUnitSerializer(units, many=True).data,
+                    "materials":       ProductMaterialSerializer(materials, many=True).data,
+                    "discount_groups": DiscountGroupSerializer(discount_groups, many=True).data,
+                }
+            }
 
-            # Serialize each queryset
-            categories_data      = ProductCategorySerializer(categories, many=True).data
-            units_data           = ProductUnitSerializer(units, many=True).data
-            materials_data       = ProductMaterialSerializer(materials, many=True).data
-            discount_groups_data = DiscountGroupSerializer(discount_groups, many=True).data
+            # ── Save to cache ──────────────────────────────────────
+            cache.set(self.CACHE_KEY, data, self.CACHE_TTL)
 
             print(f"✅ Serialization complete")
             print(f"{'='*60}\n")
 
-            return Response({
-                "success": True,
-                "data": {
-                    "categories":      categories_data,
-                    "units":           units_data,
-                    "materials":       materials_data,
-                    "discount_groups": discount_groups_data,
-                }
-            }, status=status.HTTP_200_OK)
+            return Response(data, status=status.HTTP_200_OK)
 
         except Exception as e:
             print(f"❌ Error: {type(e).__name__}: {e}")
@@ -2099,22 +2207,31 @@ class Get_Categories(APIView):
         print(f"User: {request.user.username}")
         
         try:
-            # Get all categories
+            CACHE_KEY = 'all_categories'
+        
+            # 🟢 FIX: Just pass the key name here
+            cached = cache.get(CACHE_KEY)
+            if cached:
+                print("⚡ Returning cached categories")
+                return Response(cached, status=status.HTTP_200_OK)
+                
             categories = ProductCategory.objects.all().order_by('category')
-            
             print(f"✅ Found {categories.count()} categories")
             
-            # Serialize the data
             serializer = ProductCategorySerializer(categories, many=True)
+
+            data = {
+                "success": True,
+                "count": categories.count(),
+                "data": serializer.data
+            }
+
+            cache.set(CACHE_KEY, data, 60 * 60 * 6) 
             
             print(f"✅ Returning {len(serializer.data)} serialized categories")
             print(f"{'='*60}\n")
             
-            return Response({
-                "success": True,
-                "count": categories.count(),
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
+            return Response(data, status=status.HTTP_200_OK)
             
         except Exception as e:
             print(f"❌ Error: {type(e).__name__}: {e}")
@@ -2126,7 +2243,7 @@ class Get_Categories(APIView):
                 "success": False,
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        
 class Get_Sub_Categories_By_Categories(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -2136,6 +2253,14 @@ class Get_Sub_Categories_By_Categories(APIView):
         
         # 1. If category_id is provided, filter by it.
         # 2. If category_id is None/Empty, get all subcategories.
+
+        # Cache key varies by category_id — 'all' when no filter
+        CACHE_KEY = f'subcategories_cat_{category_id or "all"}'
+
+        cached = cache.get(CACHE_KEY)
+        if cached:
+            return Response(cached)
+        
         if category_id:
             subcategories = ProductSubCategory.objects.filter(category_id=category_id)
         else:
@@ -2144,11 +2269,9 @@ class Get_Sub_Categories_By_Categories(APIView):
         # Added ordering by name for a better UI experience
         subcategories = subcategories.order_by('sub_category')
         
-        # Prepare the data
-        data = [
-            {'id': sub.id, 'name': sub.sub_category} 
-            for sub in subcategories
-        ]
+        data = [{'id': sub.id, 'name': sub.sub_category} for sub in subcategories]
+
+        cache.set(CACHE_KEY, data, 60 * 60 * 6)  # 6 hours
         
         return Response(data, status=status.HTTP_200_OK)
 
@@ -2162,17 +2285,29 @@ class Get_Brands_By_Sub_Categories(APIView):
 
         if sub_category_val:
             sub_category_ids = sub_category_val if isinstance(sub_category_val, list) else [sub_category_val]
+            CACHE_KEY = f'brands_sub_{"_".join(str(i) for i in sorted(sub_category_ids))}'
+        else:
+            CACHE_KEY = 'brands_all'
+        cached = cache.get(CACHE_KEY)
+        if cached:
+            return Response(cached)
+        
+        if sub_category_val:
             brands_queryset = brands_queryset.filter(
                 subcategory_mappings__sub_category_id__in=sub_category_ids
             )
+
         # ✅ No else — if no sub_category, all brands are returned as-is
 
-        data = list(
-            brands_queryset.distinct().order_by('brand').values('id', 'brand')
-        )
+        data = [
+            {'id': b['id'], 'name': b['brand']}
+            for b in brands_queryset.distinct().order_by('brand').values('id', 'brand')
+        ]
+
+        cache.set(CACHE_KEY, data, 60 * 60 * 6)  # 6 hours
 
         return Response(
-            [{'id': b['id'], 'name': b['brand']} for b in data],
+            data,
             status=status.HTTP_200_OK
         )
     
@@ -2494,8 +2629,6 @@ class DiscountGroupSettingsView(APIView):
     """
     GET    /api/discount-groups/        → list all groups
     POST   /api/discount-groups/        → create a new group
-    PATCH  /api/discount-groups/<id>/   → rename / update base_percent
-    DELETE /api/discount-groups/<id>/   → delete (cascades all mappings)
     """
 
     permission_classes = [IsAuthenticated]
@@ -2503,100 +2636,52 @@ class DiscountGroupSettingsView(APIView):
     # ── List ──────────────────────────────────────────────────────────────────
     def get(self, request):
         groups = DiscountGroup.objects.all().order_by("name")
-        data = [
-            {"disc_id": g.disc_id, "name": g.name, "base_percent": g.base_percent}
-            for g in groups
-        ]
-        return Response({"success": True, "data": data})
+        serializer = DiscountGroupSerializer(groups, many=True)
+        return Response({"success": True, "data": serializer.data})
 
     # ── Create ────────────────────────────────────────────────────────────────
     def post(self, request):
-        name         = request.data.get("name", "").strip()
-        base_percent = request.data.get("base_percent", 0.0)
-
-        if not name:
+        serializer = DiscountGroupSerializer(data=request.data)
+        if not serializer.is_valid():
+            # Flatten DRF's error format to a single message, matching your old response shape
+            first_error = next(iter(serializer.errors.values()))[0]
             return Response(
-                {"success": False, "error": "name is required."},
-                status=status.HTTP_400_BAD_REQUEST
+                {"success": False, "error": str(first_error)},
+                status=status.HTTP_409_CONFLICT if "already exists" in str(first_error) else status.HTTP_400_BAD_REQUEST
             )
 
-        if DiscountGroup.objects.filter(name__iexact=name).exists():
-            return Response(
-                {"success": False, "error": f"A discount group named '{name}' already exists."},
-                status=status.HTTP_409_CONFLICT
-            )
-
-        group = DiscountGroup.objects.create(name=name, base_percent=float(base_percent))
+        serializer.save()  # triggers create() → refresh_discount_groups_cache()
         return Response({
             "success": True,
-            "data": {"disc_id": group.disc_id, "name": group.name, "base_percent": group.base_percent}
+            "data": serializer.data
         }, status=status.HTTP_201_CREATED)
 
-class DiscountGroupDetailView(APIView):
+class DiscountGroupDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
+    GET    /api/discount-groups/<disc_id>/
     PATCH  /api/discount-groups/<disc_id>/
     DELETE /api/discount-groups/<disc_id>/
     """
 
     permission_classes = [IsAuthenticated]
+    queryset = DiscountGroup.objects.all()
+    serializer_class = DiscountGroupSerializer
+    lookup_field = 'disc_id'
 
-    def _get_group(self, disc_id):
-        try:
-            return DiscountGroup.objects.get(disc_id=disc_id)
-        except DiscountGroup.DoesNotExist:
-            return None
+    def perform_destroy(self, instance):
+        instance.delete()
+        refresh_discount_groups_cache()  # ← restore cache invalidation on delete
 
-    # ── Rename / update percent ───────────────────────────────────────────────
-    def patch(self, request, disc_id):
-        group = self._get_group(disc_id)
-        if not group:
-            return Response(
-                {"success": False, "error": f"Discount group {disc_id} not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        name         = request.data.get("name", "").strip()
-        base_percent = request.data.get("base_percent", None)
-
-        if not name:
-            return Response(
-                {"success": False, "error": "name is required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Guard against duplicate name (excluding self)
-        if DiscountGroup.objects.filter(name__iexact=name).exclude(disc_id=disc_id).exists():
-            return Response(
-                {"success": False, "error": f"A discount group named '{name}' already exists."},
-                status=status.HTTP_409_CONFLICT
-            )
-
-        group.name = name
-        if base_percent is not None:
-            group.base_percent = float(base_percent)
-        group.save()
-
-        return Response({
-            "success": True,
-            "data": {"disc_id": group.disc_id, "name": group.name, "base_percent": group.base_percent}
-        })
-
-    # ── Delete ────────────────────────────────────────────────────────────────
-    def delete(self, request, disc_id):
-        group = self._get_group(disc_id)
-        if not group:
-            return Response(
-                {"success": False, "error": f"Discount group {disc_id} not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        name = group.name
-        group.delete()  # CASCADE handles all FK-linked rows automatically
-
-        return Response({
-            "success": True,
-            "message": f"Discount group '{name}' and all its mappings have been deleted."
-        })
+    def handle_exception(self, exc):
+        # ← restore 409 for duplicate name
+        if hasattr(exc, 'detail'):
+            detail = str(exc.detail)
+            if 'already exists' in detail:
+                return Response(
+                    {"success": False, "error": detail},
+                    status=status.HTTP_409_CONFLICT
+                )
+        return super().handle_exception(exc)
 
 class DiscountGroupAssociationsView(APIView):
     """
@@ -2614,6 +2699,7 @@ class DiscountGroupAssociationsView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    CACHE_TTL = 60 * 30
 
     def _get_group(self, disc_id):
         try:
@@ -2621,14 +2707,23 @@ class DiscountGroupAssociationsView(APIView):
         except DiscountGroup.DoesNotExist:
             return None
 
+    def _cache_key(self, disc_id):
+        return f"discount_group_associations:{disc_id}"
+
+    def _invalidate_cache(self, disc_id):
+        cache.delete(self._cache_key(disc_id))
+
     # ── GET: fetch all associations + available options ───────────────────────
     def get(self, request, disc_id):
+        cache_key = self._cache_key(disc_id)
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+
         group = self._get_group(disc_id)
         if not group:
             return Response({"success": False, "error": "Discount group not found."}, status=404)
 
-        # Current associations
-        # ✅ After — use non-conflicting alias names
         linked_categories = list(
             DiscountGroupCategoryMap.objects.filter(group=group)
             .select_related("category")
@@ -2644,6 +2739,18 @@ class DiscountGroupAssociationsView(APIView):
             .select_related("brand")
             .values("id", linked_brand_id=F("brand__id"), name=F("brand__brand"))
         )
+
+        # In Django, F stands for Field expression. It allows you to reference database fields directly in your query without actually loading the data into Python memory first.
+
+        # In this specific context, F("brand__id") and F("brand__brand") are being used to reach across a relationship (via the double underscore __) to pull data from a related table (Brand) and rename it on the fly.
+
+        # F("brand__id"): Reaches into the related brand model and grabs its primary key id.
+
+        # F("brand__brand"): Reaches into the related brand model and grabs the actual text column containing the brand's name (e.g., brand__brand indicates a column named brand inside a model named Brand).
+
+        # These are aliased keys. Because you are using .values(), Django is going to output a list of raw Python dictionaries. By default, Django would name the dictionary keys exactly after the database columns (like "brand__id").
+
+        # By using keyword arguments like linked_brand_id=F("brand__id"), you are renaming those keys so the resulting dictionary looks clean and easy to use.
 
         linked_cat_ids   = [r["linked_cat_id"]   for r in linked_categories]
         linked_sub_ids   = [r["linked_sub_id"]   for r in linked_subcategories]
@@ -2662,7 +2769,7 @@ class DiscountGroupAssociationsView(APIView):
             .values("id", "brand")
         )
 
-        return Response({
+        response_data = {
             "success": True,
             "group": {
                 "disc_id":      group.disc_id,
@@ -2679,48 +2786,91 @@ class DiscountGroupAssociationsView(APIView):
                 "subcategories": available_subcategories,
                 "brands":        available_brands,
             },
-        })
+        }
+        cache.set(cache_key, response_data, self.CACHE_TTL)
+        return Response(response_data)
 
     # ── POST: add a new association ───────────────────────────────────────────
     def post(self, request, disc_id):
+
         group = self._get_group(disc_id)
+        
         if not group:
             return Response({"success": False, "error": "Discount group not found."}, status=404)
 
         assoc_type = request.data.get("type")
-        target_id  = request.data.get("target_id")
+        target_ids  = request.data.get("target_id")
 
-        if not assoc_type or not target_id:
-            return Response({"success": False, "error": "type and target_id are required."}, status=400)
+# 1. Accept target_ids as a list, or fallback to target_id wrapped in a list
+        target_ids = request.data.get("target_ids") or request.data.get("target_id")
+        
+        if not assoc_type or not target_ids:
+            return Response({"success": False, "error": "type and target_ids are required."}, status=400)
+
+        # Ensure target_ids is always a list for uniform processing
+        if not isinstance(target_ids, list):
+            target_ids = [target_ids]
 
         try:
-            if assoc_type == "category":
-                cat = ProductCategory.objects.get(id=target_id)
-                obj, created = DiscountGroupCategoryMap.objects.get_or_create(group=group, category=cat)
-                if not created:
-                    return Response({"success": False, "error": "This category is already linked."}, status=409)
-                return Response({"success": True, "message": f"Category '{cat.category}' linked."})
+            from django.db import transaction
+            
+            # Using a transaction block ensures all items pass or none do
+            with transaction.atomic():
+                if assoc_type == "category":
+                    # Verify all sent categories exist
+                    categories = ProductCategory.objects.filter(id__in=target_ids)
+                    if len(categories) != len(target_ids):
+                        missing = set(target_ids) - set(categories.values_list('id', flat=True))
+                        return Response({"success": False, "error": f"Category IDs not found: {list(missing)}"}, status=404)
+                    
+                    # Create mapping instances using bulk_create (ignore existing matches)
+                    new_mappings = [
+                        DiscountGroupCategoryMap(group=group, category=cat)
+                        for cat in categories
+                    ]
+                    DiscountGroupCategoryMap.objects.bulk_create(new_mappings, ignore_conflicts=True)
 
-            elif assoc_type == "subcategory":
-                sub = ProductSubCategory.objects.get(id=target_id)
-                obj, created = DiscountGroupSubCategoryMap.objects.get_or_create(group=group, sub_category=sub)
-                if not created:
-                    return Response({"success": False, "error": "This subcategory is already linked."}, status=409)
-                return Response({"success": True, "message": f"Subcategory '{sub.sub_category}' linked."})
+                elif assoc_type == "subcategory":
 
-            elif assoc_type == "brand":
-                brand = ProductBrand.objects.get(id=target_id)
-                obj, created = DiscountGroupBrandMap.objects.get_or_create(group=group, brand=brand)
-                if not created:
-                    return Response({"success": False, "error": "This brand is already linked."}, status=409)
-                return Response({"success": True, "message": f"Brand '{brand.brand}' linked."})
+                    subcategories = ProductSubCategory.objects.filter(id__in=target_ids)
 
-            else:
-                return Response({"success": False, "error": "type must be category, subcategory, or brand."}, status=400)
+                    if len(subcategories) != len(target_ids):
+                        missing = set(target_ids) - set(subcategories.values_list('id', flat=True))
+                        return Response({"success": False, "error": f"Subcategory IDs not found: {list(missing)}"}, status=404)
+                    
+                    new_mappings = [
+                        DiscountGroupSubCategoryMap(group=group, sub_category=sub)
+                        for sub in subcategories
+                    ]
 
-        except (ProductCategory.DoesNotExist, ProductSubCategory.DoesNotExist, ProductBrand.DoesNotExist):
-            return Response({"success": False, "error": f"{assoc_type.capitalize()} with id={target_id} not found."}, status=404)
+                    DiscountGroupSubCategoryMap.objects.bulk_create(new_mappings, ignore_conflicts=True)
 
+                elif assoc_type == "brand":
+
+                    brands = ProductBrand.objects.filter(id__in=target_ids)
+
+                    if len(brands) != len(target_ids):
+                        missing = set(target_ids) - set(brands.values_list('id', flat=True))
+                        return Response({"success": False, "error": f"Brand IDs not found: {list(missing)}"}, status=404)
+                    
+                    new_mappings = [
+                        DiscountGroupBrandMap(group=group, brand=brand)
+                        for brand in brands
+                    ]
+                    DiscountGroupBrandMap.objects.bulk_create(new_mappings, ignore_conflicts=True)
+
+                else:
+                    return Response({"success": False, "error": "type must be category, subcategory, or brand."}, status=400)
+
+            # Invalidate your Redis cache just once for the whole operation!
+            self._invalidate_cache(disc_id)
+            
+            item_count = len(target_ids)
+            msg = f"{item_count} {assoc_type if item_count == 1 else assoc_type + 'ies' if assoc_type == 'category' or assoc_type == 'subcategory' else assoc_type + 's'} linked."
+            return Response({"success": True, "message": msg})
+
+        except Exception as e:
+            return Response({"success": False, "error": f"An unexpected error occurred: {str(e)}"}, status=500)
     # ── DELETE: remove an association ─────────────────────────────────────────
     def delete(self, request, disc_id):
         group = self._get_group(disc_id)
@@ -2745,6 +2895,7 @@ class DiscountGroupAssociationsView(APIView):
         if not deleted:
             return Response({"success": False, "error": "Association not found."}, status=404)
 
+        self._invalidate_cache(disc_id)
         return Response({"success": True, "message": "Association removed."})
 
 class CreateOrderView(APIView):
@@ -2898,7 +3049,7 @@ class CreateOrderView(APIView):
                         role="Primary"
                     )
 
-                    employee = User.objects.filter(is_staff=True).first()
+                    employee = User.objects.filter(is_staff=True, is_superuser=False).first()
                     if employee:
                         ConversationParticipant.objects.create(
                             conversation=conversation,
@@ -2985,7 +3136,7 @@ class ConversationListView(APIView):
             # ── 1. Employee ───────────────────────────────────────────────────────
             if user_role == "Employee":
 
-                owner_user = User.objects.filter(is_superuser=True).first()
+                owner_user = User.objects.filter(is_superuser=True, is_staff=False).first()
 
                 owner_direct_conv = Conversation.objects.filter(
                     Order__isnull=True,
@@ -3019,14 +3170,9 @@ class ConversationListView(APIView):
                 ).select_related(
                     'Order', 'Order__Customer', 'Order__Customer__customer_type',
                     'Order__Customer__reward', 'Order__Employee',
-                ).prefetch_related(
-                    'messages',
-                    'Order__actions'
-                # ✅ FIX 1: order by created_at descending so the newest conv
-                # per customer is always encountered first in the loop below.
-                # last_message_at is NULL for brand-new convs with no messages,
-                # which caused older convs to sort ahead of newer ones.
-                ).order_by('-created_at')
+                ).prefetch_related ( # 👉 FIX: Pre-sort the messages newest-first into RAM cache
+                    Prefetch('messages', queryset=Message.objects.order_by('-created_at')),
+                    'Order__actions').order_by('-created_at')
 
                 result         = []
                 system_orders  = []
@@ -3047,10 +3193,11 @@ class ConversationListView(APIView):
                     if not order:
                         continue
 
-                    last_msg     = conv.messages.order_by('-created_at').first()
-                    unread_count = conv.messages.filter(
-                        is_read=False
-                    ).exclude(sender_type="Employee").count()
+                    msgs = list(conv.messages.all())
+                    
+                    # Since the prefetch sorted them newest-first, index 0 is your last message
+                    last_msg = msgs[0] if msgs else None
+                    unread_count = sum(1 for m in msgs if not m.is_read and m.sender_type != "Employee")
 
                     # ── Employee-placed order → System row ───────────────────────
                     if order.Employee_id and order.Employee.is_staff:
@@ -3105,18 +3252,17 @@ class ConversationListView(APIView):
                     })
 
                 if owner_direct_conv:
-                    last_msg     = owner_direct_conv.messages.order_by('-created_at').first()
-                    unread_count = owner_direct_conv.messages.filter(
-                        is_read=False
-                    ).exclude(sender_type="Employee").count()
+                    owner_msgs = list(owner_direct_conv.messages.all())
+                    owner_last_msg = owner_msgs[0] if owner_msgs else None
+                    owner_unread_count = sum(1 for m in owner_msgs if not m.is_read and m.sender_type != "Employee")
 
                     result.insert(0, {
                         "id":          owner_direct_conv.Conversation_Id,
                         "name":        "Owner",
                         "type":        "direct",
-                        "lastMessage": last_msg.message_text if last_msg else "Say hello to the Owner!",
+                        "lastMessage": owner_last_msg.message_text if owner_last_msg else "Say hello to the Owner!",
                         "time":        time_ago(owner_direct_conv.last_message_at),
-                        "unread":      unread_count,
+                        "unread":      owner_unread_count,
                         "rewards":     0,
                         "order":       None,
                         "isDirect":    True,
@@ -3148,14 +3294,12 @@ class ConversationListView(APIView):
                         title="owner_direct",
                         participants__user=user,
                         participants__user_type="Owner",
-                    ).prefetch_related('messages', 'participants').order_by('-last_message_at')
+                    ).prefetch_related(Prefetch('messages', queryset=Message.objects.order_by('-created_at')), 'participants').order_by('-last_message_at')
 
                     for dconv in direct_convs:
-                        last_msg     = dconv.messages.order_by('-created_at').first()
-                        unread_count = dconv.messages.filter(
-                            is_read=False
-                        ).exclude(sender_type="Owner").count()
-
+                        msgs = list(dconv.messages.all())
+                        last_msg = msgs[0] if msgs else None
+                        unread_count = sum(1 for m in msgs if not m.is_read and m.sender_type != "Owner")
                         emp_participant = dconv.participants.filter(user_type="Employee").first()
                         emp_name = (
                             emp_participant.user.get_full_name() or emp_participant.user.username
@@ -3189,7 +3333,7 @@ class ConversationListView(APIView):
                     'Order', 'Order__Customer', 'Order__Customer__customer_type',
                     'Order__Customer__reward', 'Order__Employee',
                 ).prefetch_related(
-                    'messages',
+                    Prefetch('messages', queryset=Message.objects.order_by('-created_at')),
                     'Order__actions'
                 # ✅ same fix: order by -created_at for consistency
                 ).order_by('-created_at')
@@ -3198,10 +3342,9 @@ class ConversationListView(APIView):
                     order    = conv.Order
                     customer = order.Customer if order else None
 
-                    last_msg     = conv.messages.order_by('-created_at').first()
-                    unread_count = conv.messages.filter(
-                        is_read=False
-                    ).exclude(sender_type="Owner").count()
+                    msgs = list(conv.messages.all())
+                    last_msg = msgs[0] if msgs else None
+                    unread_count = sum(1 for m in msgs if not m.is_read and m.sender_type != "Owner")
 
                     customer_type_name = (
                         customer.customer_type.type_name
@@ -3272,7 +3415,7 @@ class ConversationListView(APIView):
                     'Order__Customer__customer_type',
                     'Order__Customer__reward',
                 ).prefetch_related(
-                    'messages',
+                    Prefetch('messages', queryset=Message.objects.order_by('-created_at')),
                     'Order__actions'
                 ).order_by('-created_at').first()
 
@@ -3282,10 +3425,11 @@ class ConversationListView(APIView):
                 order    = conv.Order
                 customer = order.Customer if order else None
 
-                last_msg     = conv.messages.order_by('-created_at').first()
-                unread_count = conv.messages.filter(
-                    is_read=False
-                ).exclude(sender_type=user_role).count()
+                msgs = list(conv.messages.all())
+                last_msg = msgs[0] if msgs else None
+    
+                # Exclude sender_type dynamic matching user_role
+                unread_count = sum(1 for m in msgs if not m.is_read and m.sender_type != user_role)
 
                 latest_action = order.actions.order_by('-created_at').first()
 
@@ -3769,6 +3913,7 @@ class AcceptOrderView(APIView):
             order = Orders.objects.prefetch_related('items__Product').get(Order_Id=order_id)
             items = [
                 {
+                    "item_id":       item.Item_Id,
                     "product_name": item.Product.product_name,
                     "qty":          item.Qty,
                     "mrp":          item.MRP,
@@ -3978,7 +4123,7 @@ class ForwardToOwnerView(APIView):
             if owner_user:
                 return Response({"error": "Order already forwarded to Owner"}, status=400)
 
-            owner = User.objects.filter(is_superuser=True).first()
+            owner = User.objects.filter(is_superuser=True, is_staff=False).first()
 
             if not owner:
                 return Response({"error": "No Owner found in the system"}, status=404)
@@ -4058,6 +4203,8 @@ class CustomerAcceptedOrdersView(APIView):
             orders = Orders.objects.filter(
                 Customer=customer,
                 Status="completed",
+            ).annotate(
+                item_count=Count('items')  # ← single query instead of N+1
             ).order_by('-Order_date')
 
             orders_data = []
@@ -4117,6 +4264,26 @@ class ReturnOrderView(APIView):
             stock_updates  = []
             system_lines   = []
 
+            # Change line 46 from: item_ids = [i['item_id'] for i in items_data]
+            # To this:
+            item_ids = [i.get('item_id') for i in items_data if i.get('item_id')]
+            
+            if len(item_ids) != len(items_data):
+                return Response({"error": "Each return item must contain a valid 'item_id'."}, status=400)
+            order_items = {
+                oi.Item_Id: oi
+                for oi in OrderItems.objects.filter(
+                    Item_Id__in=item_ids, Order=order
+                ).select_related('Product')
+            }
+
+            historical_returns = {
+                ret['Order_Item_id']: ret['total']
+                for ret in Return.objects.filter(
+                    Order_Item_id__in=item_ids
+                ).values('Order_Item_id').annotate(total=Sum('Return_Qty'))
+            }
+
             with transaction.atomic():
                 for item_data in items_data:
                     item_id = item_data.get('item_id')
@@ -4124,17 +4291,13 @@ class ReturnOrderView(APIView):
                     reason  = item_data.get('reason', '')
 
                     # ✅ Get the OrderItem
-                    order_item = OrderItems.objects.get(
-                        Item_Id=item_id,
-                        Order=order
-                    )
+                    order_item = order_items.get(item_id)
+
+                    if not order_item:
+                        return Response({"error": f"Item {item_id} not found in this order."}, status=400)
 
                     # ✅ Validate return qty doesn't exceed ordered qty
-                    already_returned = Return.objects.filter(
-                        Order_Item=order_item
-                    ).aggregate(
-                        total=Sum('Return_Qty')
-                    )['total'] or 0
+                    already_returned = historical_returns.get(item_id, 0)
 
                     remaining_returnable = order_item.Qty - already_returned
                     if qty > remaining_returnable:
@@ -4155,15 +4318,26 @@ class ReturnOrderView(APIView):
                     )
                     return_records.append(return_record)
 
+                    refund_amount = qty * order_item.Selling_Price
+
+                    # ✅ Update OrderItem — deduct returned qty and recalculate line total
+                    order_item.Qty       -= qty
+                    order_item.Line_Total = order_item.Qty * order_item.Selling_Price
+                    order_item.save(update_fields=['Qty', 'Line_Total'])
+
+                    # ✅ Deduct from order total
+                    order.Total_Amount -= refund_amount
+                    order.Total_Amount  = max(0, round(order.Total_Amount, 2))  # never go negative
                     # ✅ Restock only if reason is NOT damage-related
                     DAMAGE_REASONS = ["Damaged Product", "Quality Issue"]
                     if reason not in DAMAGE_REASONS:
                         product = order_item.Product
-                        product.current_stock += qty          # ✅ updates live stock on Product
+                        product.current_stock += qty
                         product.save(update_fields=['current_stock'])
+                        
                         Stock.objects.create(
                             product=product,
-                            qty_updated=qty,                  # ✅ positive = restock, new log row
+                            qty_updated=qty,
                             user=user,
                             return_entry=return_record,
                         )
@@ -4172,47 +4346,50 @@ class ReturnOrderView(APIView):
                     system_lines.append(
                         f"{order_item.Product.product_name} ×{qty} — {reason}"
                     )
-
+                # ✅ Save order ONCE after all items processed
+                # order.save() triggers the auto percentage_paid recalculation in Orders.save()
+                order.save()
+                
                 # ✅ Create system message in conversation
-                restock_note = (
-                    f" Restocked: {', '.join(stock_updates)}."
-                    if stock_updates else
-                    " No restock (damaged items)."
-                )
+                if return_records:
+                    restock_note = (
+                        f" Restocked: {', '.join(stock_updates)}."
+                        if stock_updates else " No restock (damaged items)."
+                    )
 
-                system_text = (
-                    f"Return request for Order #{order.Order_Id}:\n"
-                    + "\n".join(f"• {line}" for line in system_lines)
-                    + restock_note
-                )
+                    system_text = (
+                        f"Return request for Order #{order.Order_Id}:\n"
+                        + "\n".join(f"• {line}" for line in system_lines)
+                        + restock_note
+                    )
 
-                msg = Message.objects.create(
-                    Conversation=conversation,
-                    Sender=None,
-                    sender_type="system",
-                    message_type="return_request",
-                    message_text=system_text,
-                    is_read=False,
-                )
+                    msg = Message.objects.create(
+                        Conversation=conversation,
+                        Sender=None,
+                        sender_type="system",
+                        message_type="return_request",
+                        message_text=system_text,
+                        is_read=False,
+                    )
 
-                conversation.last_message_at = timezone.now()
-                conversation.save()
+                    conversation.last_message_at = timezone.now()
+                    conversation.save()
 
-                # ✅ Push to WebSocket
-                try:
-                    push_message_to_ws(conversation.Conversation_Id, {
-                        "type":        "new_message",
-                        "id":          msg.Message_id,
-                        "from":        "system",
-                        "text":        msg.message_text,
-                        "time":        msg.created_at.strftime("%I:%M %p"),
-                        "messageType": msg.message_type,
-                        "order_id":    order.Order_Id,
-                        "order_status": order.Status,
-                        "conv_status": conversation.status,
-                    })
-                except Exception as ws_err:
-                    print(f"WS push failed: {ws_err}")
+                    # Push real-time event notice exactly once
+                    try:
+                        push_message_to_ws(conversation.Conversation_Id, {
+                            "type":         "new_message",
+                            "id":           msg.Message_id,
+                            "from":         "system",
+                            "text":         msg.message_text,
+                            "time":         msg.created_at.strftime("%I:%M %p"),
+                            "messageType":  msg.message_type,
+                            "order_id":     order.Order_Id,
+                            "order_status":  order.Status,
+                            "conv_status":  conversation.status,
+                        })
+                    except Exception as ws_err:
+                        print(f"WS push failed: {ws_err}")
 
             return Response({
                 "message": "Return request submitted successfully",
@@ -4254,7 +4431,8 @@ class CustomerOrderHistoryView(APIView):
             )['total'] or 0
 
             orders_data = []
-            for order in orders:
+            orders_list = list(orders)
+            for order in orders_list:
                 items = [
                     f"{item.Product.product_name} x{item.Qty}"
                     for item in order.items.all()
@@ -4277,7 +4455,7 @@ class CustomerOrderHistoryView(APIView):
                 "customer": {
                     "name":        customer.customer_name,
                     "type":        customer.customer_type.type_name if customer.customer_type else "",
-                    "totalOrders": orders.count(),
+                    "totalOrders": len(orders_list),
                     "totalSpent": f"₹{float(total_spent):,.0f}",
                     "rewards":     customer.reward.reward_points if customer.reward else 0,
                 },
@@ -4299,6 +4477,14 @@ class ConsumerListView(APIView):
             if user_role not in ["Employee", "Owner"]:
                 return Response({"error": "Access denied"}, status=403)
 
+            # 1. Build Subqueries for the Last Order fields to avoid hitting DB in the loop
+            # OuterRef('id') links this subquery to the Customer table we are looping through
+            base_last_order_qs = Orders.objects.filter(
+                Customer_id=OuterRef('id'),
+                Employee__isnull=False,
+                Employee__is_staff=True,
+            ).order_by('-Order_date')
+
             # Customers who have at least one order
             # ✅ Fixed — only customers whose orders were placed by an Employee
             customers = Customer.objects.filter(
@@ -4306,33 +4492,34 @@ class ConsumerListView(APIView):
                 orders__Employee__is_staff=True,      # ✅ that Employee must be staff
             ).select_related(
                 'customer_type', 'reward'
+            ).annotate(
+                # Compute total employee-placed orders at the database level
+                total_employee_orders=Count(
+                    'orders',
+                    filter=Q(orders__Employee__isnull=False, orders__Employee__is_staff=True)
+                ),
+                # Pull the values from our last_order subquery
+                last_order_id=Subquery(base_last_order_qs.values('Order_Id')[:1]),
+                last_order_date=Subquery(base_last_order_qs.values('Order_date')[:1]),
+                last_order_status=Subquery(base_last_order_qs.values('Status')[:1]),
             ).distinct()
 
             result = []
             for customer in customers:
                 # ✅ Only get Employee-placed orders for last order info
-                last_order = Orders.objects.filter(
-                    Customer=customer,
-                    Employee__isnull=False,       # ✅ only Employee-placed
-                    Employee__is_staff=True,
-                ).order_by('-Order_date').first()
 
-                if not last_order:
+                if not customer.last_order_id:
                     continue
 
                 result.append({
                     "customer_id":   customer.id,
                     "name":          customer.customer_name,
                     "type":          customer.customer_type.type_name if customer.customer_type else "",
-                    "totalOrders": Orders.objects.filter(
-                        Customer=customer,
-                        Employee__isnull=False,
-                        Employee__is_staff=True,
-                    ).count(),
+                    "totalOrders": customer.total_employee_orders,
                     "rewards":       customer.reward.reward_points if customer.reward else 0,
-                    "lastOrderId":   f"ORD-{last_order.Order_Id}",
-                    "lastOrderDate": last_order.Order_date.strftime("%Y-%m-%d"),
-                    "lastOrderStatus": last_order.Status.capitalize(),
+                    "lastOrderId":   f"ORD-{customer.last_order_id}",
+                    "lastOrderDate": customer.last_order_date.strftime("%Y-%m-%d"),
+                    "lastOrderStatus": customer.last_order_status.capitalize(),
                 })
 
             return Response({"consumers": result}, status=200)
@@ -4502,13 +4689,10 @@ class CustomerDueOrdersView(APIView):
                 Status__in=["pending", "completed"],  # ✅ include completed but unpaid
             ).exclude(
                 payment_status="full"
-            ).select_related('Customer').order_by('-Order_date')
+            ).select_related('Customer', 'Customer__customer_type').prefetch_related('conversation_set').order_by('-Order_date')
 
             orders_data = []
-            for order in orders:
-                conv = Conversation.objects.filter(
-                    Order=order
-                ).values_list('Conversation_Id', flat=True).first()
+            for order in orders: 
 
                 orders_data.append({
                     "order_id":      order.Order_Id,
@@ -4517,7 +4701,7 @@ class CustomerDueOrdersView(APIView):
                     "amount_paid":   float(order.amount_paid),
                     "remaining":     round(float(order.Total_Amount) - float(order.amount_paid), 2),
                     "payment_status": order.payment_status,
-                    "conv_id":       conv,
+                    "conv_id":       order.conversation_set.all()[0].Conversation_Id if order.conversation_set.exists() else None,
                     "order_date":    order.Order_date.strftime("%d %b %Y"),
                 })
 
@@ -4600,34 +4784,6 @@ class ConsumerDueOrdersView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=500)
-
-VALID_FORWARD_ACTIONS = ["order_packed", "order_loaded", "order_on_the_way"]
-
-PREREQUISITE_MAP = {
-    "order_packed":    "accepted",
-    "order_loaded":    "order_packed",
-    "order_on_the_way": "order_loaded",
-}
-
-DELAYABLE_FROM = {"order_packed", "order_loaded", "order_on_the_way"}
-
-ACTION_LABELS = {
-    "order_packed":     "Order packed and ready for dispatch",
-    "order_loaded":     "Order loaded onto vehicle",
-    "order_on_the_way": "Order is on the way",
-    "delayed":          "Order delivery has been delayed",
-    "resume":           "Order delivery has resumed",
-    "order_received":   "Order received by customer",
-}
-
-MSG_TYPE_MAP = {
-    "order_packed":     "order_packed",
-    "order_loaded":     "order_loaded",
-    "order_on_the_way": "order_on_the_way",
-    "delayed":          "order_delayed",
-    "resume":           "order_resumed",
-    "order_received":   "order_received",
-}
 
 def get_latest_action(order):
     return (
@@ -4869,24 +5025,31 @@ class ActiveOrdersView(APIView):
                 Status="pending",       # still in progress
             ).select_related(
                 'Customer__customer_type',
+                'Customer__reward',
                 'Employee',
             ).prefetch_related(
                 'items__Product',
                 'actions',
+                'conversation_set'
             ).order_by('Order_date')
  
             result = []
  
             for order in orders:
-                conv = Conversation.objects.filter(Order=order).first()
+                conv = order.conversation_set.all()[0] if order.conversation_set.all() else None
                 if not conv:
                     continue
  
                 # Latest action (excluding forwarded/rejected/accepted for display)
                 # Get all actions sorted
-                all_actions = list(order.actions.all().order_by('-created_at'))
+                all_actions = sorted(
+                    list(order.actions.all()), 
+                    key=lambda x: x.created_at, 
+                    reverse=True
+                )
 
                 # 1. Get accepted action separately (ALWAYS needed)
+                # The next() function is a built-in Python function used to retrieve the very first item from an iterator (like a generator expression, a list iterator, or a loop element stream).
                 accepted_action = next(
                     (a for a in all_actions if a.action_type == "accepted"),
                     None
@@ -4929,10 +5092,6 @@ class ActiveOrdersView(APIView):
                         next_valid_actions.append("order_received")
 
                 # Expected delivery from accepted action
-                accepted_action = next(
-                    (a for a in order.actions.all() if a.action_type == "accepted"),
-                    None
-                )
 
                 expected_delivery = (
                     accepted_action.expected_delivery.strftime("%d %b %Y, %I:%M %p")
@@ -4964,7 +5123,7 @@ class ActiveOrdersView(APIView):
                             "product_name": item.Product.product_name,
                             "qty":          item.Qty,
                         }
-                        for item in order.items.select_related('Product').all()
+                        for item in order.items.all()
                     ],
                 })
  
@@ -5188,7 +5347,8 @@ class OverduePaymentsView(View):
     Used by the dashboard to show the owner the list of overdue orders.
     """
     def get(self, request):
-        cutoff = timezone.now() - relativedelta(months=2)
+        now = timezone.now()
+        cutoff = now - relativedelta(months=2)
 
         overdue_orders = (
             Orders.objects

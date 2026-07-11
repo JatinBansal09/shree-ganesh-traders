@@ -1,0 +1,49 @@
+version: "3.9"
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: shree_ganesh_redis
+    restart: always
+    networks:
+      - sgnet
+
+  backend:
+    build:
+      context: ./my-app/backend
+      dockerfile: Dockerfile
+    container_name: shree_ganesh_backend
+    restart: always
+    env_file:
+      - ./my-app/backend/.env
+    depends_on:
+      - redis
+    ports:
+      - "8000:8000"
+    volumes:
+      - static_files:/app/staticfiles
+    networks:
+      - sgnet
+
+  frontend:
+    build:
+      context: ./my-app
+      dockerfile: Dockerfile
+    container_name: shree_ganesh_frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /home/ubuntu/certs:/etc/letsencrypt/certs:ro
+      - static_files:/app/staticfiles:ro
+    depends_on:
+      - backend
+    networks:
+      - sgnet
+
+volumes:
+  static_files:
+
+networks:
+  sgnet:
+    driver: bridge

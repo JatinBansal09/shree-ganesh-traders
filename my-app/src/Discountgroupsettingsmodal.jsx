@@ -12,24 +12,29 @@ import { toastAlert } from "./alerts";
  *  - discountGroups: [{ disc_id, name, base_percent }]
  *  - refreshData   : () => void   — call after any mutation to reload parent state
  */
-const DiscountGroupSettingsModal = ({ isOpen, onClose, discountGroups = [], refreshData }) => {
+const DiscountGroupSettingsModal = ({
+  isOpen,
+  onClose,
+  discountGroups = [],
+  refreshData,
+}) => {
   if (!isOpen) return null;
 
   // ── Add state ──────────────────────────────────────────────────────────────
-  const [newName, setNewName]               = useState("");
-  const [newPercent, setNewPercent]         = useState("");
-  const [adding, setAdding]                 = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newPercent, setNewPercent] = useState("");
+  const [adding, setAdding] = useState(false);
 
   // ── Edit state ─────────────────────────────────────────────────────────────
-  const [editingId, setEditingId]           = useState(null);
-  const [editName, setEditName]             = useState("");
-  const [editPercent, setEditPercent]       = useState("");
-  const [saving, setSaving]                 = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editPercent, setEditPercent] = useState("");
+  const [saving, setSaving] = useState(false);
 
   // ── Delete confirm state ───────────────────────────────────────────────────
   // Stores disc_id of the group pending confirmation, null otherwise
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-  const [deleting, setDeleting]               = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // ─── Add ──────────────────────────────────────────────────────────────────
   const handleAdd = async () => {
@@ -40,11 +45,14 @@ const DiscountGroupSettingsModal = ({ isOpen, onClose, discountGroups = [], refr
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name:         newName.trim(),
+          name: newName.trim(),
           base_percent: parseFloat(newPercent) || 0.0,
         }),
       });
-      if (res?.success === false) { toastAlert(res.error || "Failed to add", "error"); return; }
+      if (res?.success === false) {
+        toastAlert(res.error || "Failed to add", "error");
+        return;
+      }
       toastAlert("Discount group created!", "success");
       setNewName("");
       setNewPercent("");
@@ -73,11 +81,14 @@ const DiscountGroupSettingsModal = ({ isOpen, onClose, discountGroups = [], refr
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name:         editName.trim(),
+          name: editName.trim(),
           base_percent: parseFloat(editPercent) || 0.0,
         }),
       });
-      if (res?.success === false) { toastAlert(res.error || "Failed to save", "error"); return; }
+      if (res?.success === false) {
+        toastAlert(res.error || "Failed to save", "error");
+        return;
+      }
       toastAlert("Discount group updated!", "success");
       setEditingId(null);
       refreshData();
@@ -95,7 +106,10 @@ const DiscountGroupSettingsModal = ({ isOpen, onClose, discountGroups = [], refr
       const res = await apiFetch(`/api/discount-groups/${discId}/`, {
         method: "DELETE",
       });
-      if (res?.success === false) { toastAlert(res.error || "Failed to delete", "error"); return; }
+      if (res?.success === false) {
+        toastAlert(res.error || "Failed to delete", "error");
+        return;
+      }
       toastAlert("Discount group deleted.", "success");
       setConfirmDeleteId(null);
       refreshData();
@@ -110,20 +124,25 @@ const DiscountGroupSettingsModal = ({ isOpen, onClose, discountGroups = [], refr
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in duration-200">
-
         {/* Header */}
         <div className="px-6 py-4 flex justify-between items-center border-b bg-white">
           <div>
-            <h2 className="text-sm font-bold text-gray-800">Discount Group Settings</h2>
-            <p className="text-[11px] text-gray-400 mt-0.5">Add, rename, or delete discount groups</p>
+            <h2 className="text-sm font-bold text-gray-800">
+              Discount Group Settings
+            </h2>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              Add, rename, or delete discount groups
+            </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
             <X size={20} />
           </button>
         </div>
 
         <div className="p-6 space-y-6">
-
           {/* ── Add New Group ─────────────────────────────────────────────── */}
           <div>
             <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-2">
@@ -173,32 +192,39 @@ const DiscountGroupSettingsModal = ({ isOpen, onClose, discountGroups = [], refr
               ) : (
                 discountGroups.map((group) => (
                   <div key={group.disc_id}>
-
                     {/* ── Normal row ── */}
-                    {editingId !== group.disc_id && confirmDeleteId !== group.disc_id && (
-                      <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">{group.name}</p>
-                          <p className="text-[11px] text-gray-400">{group.base_percent}% base discount</p>
+                    {editingId !== group.disc_id &&
+                      confirmDeleteId !== group.disc_id && (
+                        <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700">
+                              {group.name}
+                            </p>
+                            <p className="text-[11px] text-gray-400">
+                              {group.base_percent}% base discount
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => startEdit(group)}
+                              className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                              title="Rename"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setConfirmDeleteId(group.disc_id);
+                                setEditingId(null);
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => startEdit(group)}
-                            className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
-                            title="Rename"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            onClick={() => { setConfirmDeleteId(group.disc_id); setEditingId(null); }}
-                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                            title="Delete"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* ── Inline edit row ── */}
                     {editingId === group.disc_id && (
@@ -209,13 +235,17 @@ const DiscountGroupSettingsModal = ({ isOpen, onClose, discountGroups = [], refr
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleSave(group.disc_id)}
+                            onKeyDown={(e) =>
+                              e.key === "Enter" && handleSave(group.disc_id)
+                            }
                             className="flex-1 px-3 py-1.5 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-blue-400 outline-none bg-white"
                           />
                           <input
                             type="number"
                             value={editPercent}
-                            min="0" max="100" step="0.1"
+                            min="0"
+                            max="100"
+                            step="0.1"
                             onChange={(e) => setEditPercent(e.target.value)}
                             className="w-24 px-3 py-1.5 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-blue-400 outline-none bg-white"
                           />
@@ -243,10 +273,15 @@ const DiscountGroupSettingsModal = ({ isOpen, onClose, discountGroups = [], refr
                       <div className="px-4 py-3 bg-red-50/60 border-l-2 border-red-400">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
-                            <AlertTriangle size={14} className="text-red-500 shrink-0" />
+                            <AlertTriangle
+                              size={14}
+                              className="text-red-500 shrink-0"
+                            />
                             <p className="text-xs text-red-700 font-medium leading-tight">
-                              Delete <span className="font-bold">"{group.name}"</span>? This will remove all
-                              customer &amp; product mappings linked to it.
+                              Delete{" "}
+                              <span className="font-bold">"{group.name}"</span>?
+                              This will remove all customer &amp; product
+                              mappings linked to it.
                             </p>
                           </div>
                           <div className="flex gap-2 shrink-0">
@@ -267,7 +302,6 @@ const DiscountGroupSettingsModal = ({ isOpen, onClose, discountGroups = [], refr
                         </div>
                       </div>
                     )}
-
                   </div>
                 ))
               )}
@@ -276,8 +310,8 @@ const DiscountGroupSettingsModal = ({ isOpen, onClose, discountGroups = [], refr
 
           {/* Danger note */}
           <p className="text-[11px] text-gray-400 italic leading-relaxed">
-            ⚠️ Deleting a discount group permanently removes all customer assignments and product
-            mappings tied to it. This cannot be undone.
+            ⚠️ Deleting a discount group permanently removes all customer
+            assignments and product mappings tied to it. This cannot be undone.
           </p>
         </div>
       </div>

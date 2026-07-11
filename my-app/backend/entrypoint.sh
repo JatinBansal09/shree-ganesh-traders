@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+export PYTHONPATH=/app
+
 echo "→ Waiting for database..."
 while ! python -c "
 import os, MySQLdb
@@ -21,6 +23,7 @@ except:
 done
 
 echo "→ Running migrations..."
+cd /app
 python manage.py makemigrations --noinput
 python manage.py migrate --noinput
 
@@ -31,7 +34,4 @@ echo "→ Collecting static files..."
 python manage.py collectstatic --noinput
 
 echo "→ Backend ready. Starting server..."
-exec gunicorn backend.wsgi:application \
-    --bind 0.0.0.0:8000 \
-    --workers 3 \
-    --timeout 120
+exec daphne -b 0.0.0.0 -p 8000 backend.asgi:application

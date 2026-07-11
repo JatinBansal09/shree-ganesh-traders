@@ -24,8 +24,6 @@ if SENTRY_DSN:
         environment=os.environ.get("ENVIRONMENT", "development"),
     )
 
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-
 # SECRET_KEY = 'django-insecure-0@!334ba(at)1gd4g0@fi^k)ppzsmigt)rh+8r_*toum*$x!uc'
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
@@ -49,10 +47,10 @@ OWNER_PHONE = os.environ.get('OWNER_PHONE')
 #         # This stops the server from starting in production without a real key
 #         raise ValueError("DJANGO_SECRET_KEY environment variable is not set!")
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = ['*']  # ✅ For Docker: allows all hosts
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 # ==================== APPLICATION DEFINITION ====================
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -141,7 +139,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': os.environ.get('DB_ENGINE', 'django.db.backends.mysql'),
-        'HOST': os.environ.get('DB_HOST', 'localhost'), 
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
         'NAME': os.environ.get('DB_NAME'),
         'USER': os.environ.get('DB_USER'),
         'PASSWORD': os.environ.get('DB_PASSWORD'),
@@ -195,14 +193,6 @@ USE_TZ = True
 #     "http://127.0.0.1:5173",
 # ]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost",        # ✅ Docker nginx
-    "http://localhost:80",     # ✅ Docker nginx explicit port
-    
-]
-
 CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 
@@ -211,16 +201,26 @@ CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 #     "http://localhost:5173",
 #     "http://127.0.0.1:5173",
 # ]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost",
+    "http://localhost:80",
+    "https://shreeganeshtrader.in",
+    "https://www.shreeganeshtrader.in",
+]
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://localhost",        # ✅ Docker nginx
+    "http://localhost",
     "http://localhost:80",
+    "https://shreeganeshtrader.in",
+    "https://www.shreeganeshtrader.in",
 ]
-
 CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_COOKIE_HTTPONLY = False  # Frontend needs to read this
-CSRF_COOKIE_SECURE = not DEBUG  # True in production with HTTPS
+CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_USE_SESSIONS = False  # Keep as cookie for frontend access
 
@@ -232,12 +232,12 @@ SESSION_COOKIE_AGE = 24*3600  # 24 hours - keeps cookie alive on browser (backen
 SESSION_SAVE_EVERY_REQUEST = True  # MUST BE FALSE for timed expiry to work!
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Use time-based expiry, not browser session
 SESSION_COOKIE_HTTPONLY = True  # JavaScript can't access (security)
-SESSION_COOKIE_SECURE = not DEBUG  # True in production with HTTPS
+SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SAMESITE = 'Lax'
 
 # Custom setting: Backend session timeout (independent from cookie Max-Age)
 
-# Clear DREsession when user logs out
+# Clear session when user logs out
 SESSION_CLEAR_ON_LOGOUT = True
 
 # ==================== SECURITY SETTINGS ====================

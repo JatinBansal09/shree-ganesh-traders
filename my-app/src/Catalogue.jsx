@@ -545,6 +545,9 @@ const Catalogue = () => {
                   >
                     {product.product_name}
                   </h3>
+                  {product.size && (
+                    <p className="text-xs text-gray-400 mb-1">{product.size}</p>
+                  )}
 
                   <p className="text-2xl font-['Raleway'] text-gray-800 mb-4">
                     ₹

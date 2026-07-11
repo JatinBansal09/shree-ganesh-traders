@@ -7,9 +7,11 @@ import subCategories from "./subCategories";
 const ProductModal = ({ product, onClose }) => {
   if (!product) return null;
 
-  const brand = brands.find(b => b.id === product.Brand_Id);
-  const category = categories.find(c => c.id === product.Category_Id);
-  const subCategory = subCategories.find(sc => sc.id === product.Sub_Category);
+  const brand = brands.find((b) => b.id === product.Brand_Id);
+  const category = categories.find((c) => c.id === product.Category_Id);
+  const subCategory = subCategories.find(
+    (sc) => sc.id === product.Sub_Category,
+  );
 
   const imageKey =
     (brand?.name || "") + "_" + product.product_name.replaceAll(" ", "_");
@@ -20,7 +22,6 @@ const ProductModal = ({ product, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       {/* MODAL: Added 'flex-col sm:flex-row' and 'max-h-[90vh] overflow-y-auto' */}
       <div className="bg-white w-full max-w-3xl rounded-2xl shadow-xl relative flex flex-col sm:flex-row overflow-hidden max-h-[90vh] overflow-y-auto sm:overflow-visible">
-        
         {/* CLOSE BUTTON */}
         <button
           onClick={onClose}
@@ -45,8 +46,25 @@ const ProductModal = ({ product, onClose }) => {
           </h2>
 
           <p className="text-sm text-gray-500">
-            {category?.name} • {subCategory?.name}
+            {[product.category_name, product.sub_category_name]
+              .filter(Boolean)
+              .join(" • ")}
           </p>
+
+          {(product.size ||
+            product.product_color ||
+            product.capacity ||
+            product.warranty) && (
+            <div className="text-sm text-gray-500 space-y-1">
+              {product.size && <p>📐 Size: {product.size}</p>}
+              {product.product_color && (
+                <p>🎨 Color: {product.product_color}</p>
+              )}
+              {product.capacity && <p>🧴 Capacity: {product.capacity}</p>}
+              {product.warranty && <p>🛡️ Warranty: {product.warranty}</p>}
+              {product.max_head > 0 && <p>💧 Max Head: {product.max_head} m</p>}
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <div className="text-yellow-400 text-sm">★★★★★</div>
@@ -54,11 +72,15 @@ const ProductModal = ({ product, onClose }) => {
           </div>
 
           <p className="text-3xl font-semibold text-gray-900">
-            ₹{product.price.toLocaleString("en-IN")}
+            ₹
+            {Math.round(
+              product.price * (1 - (product.base_percent || 0) / 100),
+            ).toLocaleString("en-IN")}
           </p>
 
           <p className="text-gray-600 text-sm leading-relaxed">
-            {product.product_description || "No description available for this product."}
+            {product.product_description ||
+              "No description available for this product."}
           </p>
 
           <button className="w-full bg-[#F7941D] text-white py-4 rounded-xl font-bold hover:bg-[#e6861b] transition-colors shadow-lg active:scale-95">
