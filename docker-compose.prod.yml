@@ -8,13 +8,15 @@ services:
       - sgnet
 
   backend:
+    environment:
+      - DJANGO_SETTINGS_MODULE=backend.settings_prod
     build:
       context: ./my-app/backend
       dockerfile: Dockerfile
     container_name: shree_ganesh_backend
     restart: always
     env_file:
-      - ./my-app/backend/.env
+      - ./my-app/backend/.env.prod
     depends_on:
       - redis
     ports:
