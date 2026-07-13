@@ -1,1 +1,22 @@
-
+name: Deploy Test Version
+on:
+  push:
+    branches: [test_version]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST_TEST }}
+          username: ${{ secrets.EC2_USER_TEST }}
+          key: ${{ secrets.EC2_SSH_KEY_TEST }}
+          script: |
+            set -e
+            cd ~/shree-ganesh-traders
+            git checkout test_version
+            git pull origin test_version
+            echo "${{ secrets.ENV_FILE_PROD }}" > my-app/backend/.env.prod
+            docker-compose -f docker-compose.prod.yml down
+            docker-compose -f docker-compose.prod.yml up -d --build
+            docker-compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
